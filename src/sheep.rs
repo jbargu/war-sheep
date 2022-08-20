@@ -76,14 +76,21 @@ impl Wander {
     }
 }
 
-fn spawn_sheep(commands: &mut Commands, transform: Transform, sheep: Sheep) -> Entity {
+fn spawn_sheep(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+    transform: Transform,
+    sheep: Sheep,
+) -> Entity {
     let mut transform = transform;
     transform.rotation = Quat::IDENTITY;
     commands
         .spawn_bundle(SpriteBundle {
             transform,
+            texture: asset_server.load("BaseSheep.png"),
             sprite: Sprite {
                 color: Color::WHITE,
+                custom_size: Some(Vec2::splat(1.0)),
                 ..default()
             },
             ..default()
@@ -105,13 +112,14 @@ fn spawn_sheep(commands: &mut Commands, transform: Transform, sheep: Sheep) -> E
 #[derive(Component)]
 pub struct SheepParent;
 
-fn init_sheep(mut commands: Commands) {
+fn init_sheep(mut commands: Commands, asset_server: Res<AssetServer>) {
     let mut rng = thread_rng();
 
     let mut sheep = Vec::with_capacity(COUNT_INIT_SHEEP);
     for i in 0..=COUNT_INIT_SHEEP {
         let new_sheep = spawn_sheep(
             &mut commands,
+            &asset_server,
             Transform {
                 translation: Vec3::new(
                     rng.gen_range(-X_MAX_POS_OFFSET..=X_MAX_POS_OFFSET),
@@ -180,6 +188,7 @@ fn select_sheep(
 
 fn drop_sheep(
     mut commands: Commands,
+    asset_server: Res<AssetServer>,
     dropped: RemovedComponents<Drag>,
     sheep: Query<(Entity, &Sheep, &Transform)>,
     sheep_parent: Query<Entity, With<SheepParent>>,
@@ -201,6 +210,7 @@ fn drop_sheep(
 
                 let new_sheep = spawn_sheep(
                     &mut commands,
+                    &asset_server,
                     *collided_transform,
                     Sheep {
                         // In here we would have the actual trait mutation / combination rather
