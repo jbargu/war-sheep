@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 bevy = { version = "0.8", features = ["dynamic"] }
 bevy-inspector-egui = "0.12" 
+rand = "0.8"
 
 ## Uncomment if game becomes too slow in debug mode ## 
 #
