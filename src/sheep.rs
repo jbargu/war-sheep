@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+
 use rand::{thread_rng, Rng};
 
 use crate::{drag::Drag, ScreenToWorld};
@@ -10,7 +11,8 @@ impl Plugin for SheepPlugin {
         app.add_startup_system(init_sheep)
             .add_system_to_stage(CoreStage::PreUpdate, select_sheep)
             .add_system(drop_sheep)
-            .add_system(update_sheep);
+            .add_system(update_sheep)
+            .add_system(wander);
     }
 }
 
@@ -18,13 +20,65 @@ const X_MAX_POS_OFFSET: f32 = 10.0;
 const Y_MAX_POS_OFFSET: f32 = 6.0;
 const COUNT_INIT_SHEEP: usize = 10;
 
+const WANDER_TIME_SECS: f32 = 3.0;
+const IDLE_TIME_SECS: f32 = 5.0;
+const MAX_WANDER_TIME_DEVIANCE_PERCENT: f32 = 0.2;
+
+const SHEEP_WANDER_SPEED: f32 = 1.0;
+const SHEEP_ROT_AMPLITUDE_RAD: f32 = 10.0 * (std::f32::consts::PI / 180.0);
+const SHEEP_ROT_WAVELENGTH_SECS_INV: f32 = 8.0;
+
 #[derive(Component, Default)]
 pub struct Sheep {
     // In future we can put all the sheep traits here
     state: u8,
 }
 
+#[derive(Copy, Clone, PartialEq, Eq)]
+enum WanderState {
+    Wandering,
+    Idling,
+}
+
+#[derive(Component)]
+pub struct Wander {
+    wander_time_s: f32,
+    idle_time_s: f32,
+    time_deviance: f32,
+    state: WanderState,
+    timer: Timer,
+    wander_dir: Vec2,
+}
+
+impl Wander {
+    fn new(wander_time_s: f32, idle_time_s: f32, time_deviance: f32, state: WanderState) -> Self {
+        let mut rng = thread_rng();
+
+        Self {
+            wander_time_s,
+            idle_time_s,
+            time_deviance,
+            state,
+            timer: Timer::from_seconds(
+                match state {
+                    WanderState::Wandering => {
+                        wander_time_s * (1.0 + rng.gen_range(-time_deviance..=time_deviance))
+                    }
+                    WanderState::Idling => {
+                        idle_time_s * (1.0 + rng.gen_range(-time_deviance..=time_deviance))
+                    }
+                },
+                false,
+            ),
+            wander_dir: Vec2::new(rng.gen_range(-1.0..=1.0), rng.gen_range(-1.0..=1.0))
+                .normalize_or_zero(),
+        }
+    }
+}
+
 fn spawn_sheep(commands: &mut Commands, transform: Transform, sheep: Sheep) -> Entity {
+    let mut transform = transform;
+    transform.rotation = Quat::IDENTITY;
     commands
         .spawn_bundle(SpriteBundle {
             transform,
@@ -35,6 +89,16 @@ fn spawn_sheep(commands: &mut Commands, transform: Transform, sheep: Sheep) -> E
             ..default()
         })
         .insert(sheep)
+        .insert(Wander::new(
+            WANDER_TIME_SECS,
+            IDLE_TIME_SECS,
+            MAX_WANDER_TIME_DEVIANCE_PERCENT,
+            match rand::random() {
+                true => WanderState::Wandering,
+                false => WanderState::Idling,
+            },
+        ))
+        .insert(Speed(SHEEP_WANDER_SPEED))
         .id()
 }
 
@@ -147,6 +211,43 @@ fn drop_sheep(
 
                 commands.entity(sheep_parent.single()).add_child(new_sheep);
             }
+        }
+    }
+}
+
+#[derive(Component)]
+pub struct Speed(f32);
+
+fn wander(
+    mut sheeps: Query<(Entity, &mut Wander, &mut Transform, &Speed), With<Sheep>>,
+    time: Res<Time>,
+) {
+    for (entity, mut sheep, mut transform, speed) in sheeps.iter_mut() {
+        sheep.timer.tick(time.delta());
+
+        if sheep.timer.just_finished() {
+            *sheep = Wander::new(
+                sheep.wander_time_s,
+                sheep.idle_time_s,
+                sheep.time_deviance,
+                match sheep.state {
+                    WanderState::Wandering => {
+                        transform.rotation = Quat::IDENTITY;
+                        WanderState::Idling
+                    }
+                    WanderState::Idling => WanderState::Wandering,
+                },
+            );
+        }
+
+        if sheep.state == WanderState::Wandering {
+            transform.translation += sheep.wander_dir.extend(0.0) * speed.0 * time.delta_seconds();
+            transform.rotation = Quat::from_rotation_z(
+                SHEEP_ROT_AMPLITUDE_RAD
+                    * (entity.id() as f32
+                        + sheep.timer.elapsed_secs() as f32 * SHEEP_ROT_WAVELENGTH_SECS_INV)
+                        .sin(),
+            );
         }
     }
 }
