@@ -103,7 +103,7 @@ fn select_sheep(
                     .unwrap()
             });
 
-            if let Some((sheep, _)) = sheep.iter().next() {
+            if let Some((sheep, _)) = sheep.get(0) {
                 commands.entity(*sheep).insert(Drag);
             }
         }
@@ -130,8 +130,7 @@ fn drop_sheep(
                         .distance(dropped_transform.translation)
                         <= transform.scale.x
                 })
-                .filter(|(entity, _, _)| entity.id() != drop.id())
-                .next()
+                .find(|(entity, _, _)| entity.id() != drop.id())
             {
                 commands.entity(drop).despawn_recursive();
                 commands.entity(collided).despawn_recursive();
