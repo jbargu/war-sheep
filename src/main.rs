@@ -1,3 +1,11 @@
+// Sprite z-axis ordering
+//
+// 0    - background
+// 10   - sheep
+// 20   - foreground
+
+#![allow(clippy::type_complexity)]
+
 use bevy::prelude::*;
 use bevy::render::texture::ImageSettings;
 
@@ -50,7 +58,35 @@ fn main() {
         .add_plugin(sheep::SheepPlugin)
         .add_plugin(drag::DragPlugin)
         .add_startup_system(spawn_camera)
+        .add_startup_system(spawn_farm_scene)
         .run();
+}
+
+fn spawn_farm_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.spawn_bundle(SpriteBundle {
+        texture: asset_server.load("SheepFarmBehind.png"),
+        sprite: Sprite {
+            custom_size: Some(Vec2::splat(260.0 / 16.0)),
+            ..default()
+        },
+        transform: Transform {
+            translation: Vec3::splat(0.0),
+            ..default()
+        },
+        ..default()
+    });
+    commands.spawn_bundle(SpriteBundle {
+        texture: asset_server.load("SheepFarmInfront.png"),
+        sprite: Sprite {
+            custom_size: Some(Vec2::splat(260.0 / 16.0)),
+            ..default()
+        },
+        transform: Transform {
+            translation: Vec2::splat(0.0).extend(20.0),
+            ..default()
+        },
+        ..default()
+    });
 }
 
 fn spawn_camera(mut commands: Commands) {

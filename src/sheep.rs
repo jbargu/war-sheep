@@ -127,7 +127,7 @@ fn init_sheep(mut commands: Commands, asset_server: Res<AssetServer>) {
                 translation: Vec3::new(
                     rng.gen_range(-X_MAX_POS_OFFSET..=X_MAX_POS_OFFSET),
                     rng.gen_range(-Y_MAX_POS_OFFSET..=Y_MAX_POS_OFFSET),
-                    0.0,
+                    10.0,
                 ),
                 ..default()
             },
