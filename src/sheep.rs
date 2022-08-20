@@ -10,11 +10,13 @@ impl Plugin for SheepPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(init_sheep)
             .add_system_to_stage(CoreStage::PreUpdate, select_sheep)
+            .add_system_to_stage(CoreStage::PostUpdate, dragged_sheep_bounds_check)
             .add_system(drop_sheep)
             .add_system(update_sheep)
             .add_system(wander)
             .add_system(wobble_sheep)
-            .add_system(shrink_sheep_on_drop);
+            .add_system(shrink_sheep_on_drop)
+            .add_system(update_sheep_ordering);
     }
 }
 
@@ -204,7 +206,8 @@ fn drop_sheep(
                 .filter(|(_, _, transform)| {
                     transform
                         .translation
-                        .distance(dropped_transform.translation)
+                        .truncate()
+                        .distance(dropped_transform.translation.truncate())
                         <= transform.scale.x
                 })
                 .find(|(entity, _, _)| entity.id() != drop.id())
@@ -279,6 +282,22 @@ fn wander(
     }
 }
 
+fn dragged_sheep_bounds_check(mut transforms: Query<&mut Transform, (With<Sheep>, With<Drag>)>) {
+    for mut transform in transforms.iter_mut() {
+        if transform.translation.y > BOUNDS_Y.y {
+            transform.translation.y = BOUNDS_Y.y;
+        } else if transform.translation.y < BOUNDS_Y.x {
+            transform.translation.y = BOUNDS_Y.x;
+        }
+
+        if transform.translation.x > BOUNDS_X.y {
+            transform.translation.x = BOUNDS_X.y;
+        } else if transform.translation.x < BOUNDS_X.x {
+            transform.translation.x = BOUNDS_X.x;
+        }
+    }
+}
+
 // Wobble when they're picked up
 fn wobble_sheep(mut transforms: Query<&mut Transform, With<Drag>>, time: Res<Time>) {
     for mut transform in transforms.iter_mut() {
@@ -298,6 +317,27 @@ fn shrink_sheep_on_drop(
         if let Ok(mut transform) = sheeps.get_mut(dropped) {
             transform.scale = Vec3::splat(1.0);
             transform.rotation = Quat::IDENTITY;
+        }
+    }
+}
+
+// Update the z axis of all the sheep so that they are ordered closer to the camera if they are
+// further down the screen
+// Some magic numbers in here*, end of the day, I'm getting tired, sorry!
+//
+// *refer to `main.rs#L1`
+fn update_sheep_ordering(
+    mut q: Query<(Entity, &mut Transform), (With<Sheep>, Changed<Transform>)>,
+    dragged: Query<&Drag>,
+) {
+    for (entity, mut transform) in q.iter_mut() {
+        transform.translation.z = match dragged.get(entity) {
+            Ok(_) => 9.9,
+            Err(_) => {
+                9.9 - ((transform.translation.y - BOUNDS_Y.x).abs()
+                    / (BOUNDS_Y.y - BOUNDS_Y.x).abs())
+                    * 9.79
+            }
         }
     }
 }
