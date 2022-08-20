@@ -63,30 +63,35 @@ fn main() {
 }
 
 fn spawn_farm_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn_bundle(SpriteBundle {
-        texture: asset_server.load("SheepFarmBehind.png"),
-        sprite: Sprite {
-            custom_size: Some(Vec2::splat(260.0 / 16.0)),
+    // Spawn farm backgrounds
+    commands
+        .spawn_bundle(SpriteBundle {
+            texture: asset_server.load("SheepFarmBehind.png"),
+            sprite: Sprite {
+                custom_size: Some(Vec2::splat(260.0 / 16.0)),
+                ..default()
+            },
+            transform: Transform {
+                translation: Vec3::splat(0.0),
+                ..default()
+            },
             ..default()
-        },
-        transform: Transform {
-            translation: Vec3::splat(0.0),
+        })
+        .insert(Name::from("FarmBehind"));
+    commands
+        .spawn_bundle(SpriteBundle {
+            texture: asset_server.load("SheepFarmInfront.png"),
+            sprite: Sprite {
+                custom_size: Some(Vec2::splat(260.0 / 16.0)),
+                ..default()
+            },
+            transform: Transform {
+                translation: Vec2::splat(0.0).extend(20.0),
+                ..default()
+            },
             ..default()
-        },
-        ..default()
-    });
-    commands.spawn_bundle(SpriteBundle {
-        texture: asset_server.load("SheepFarmInfront.png"),
-        sprite: Sprite {
-            custom_size: Some(Vec2::splat(260.0 / 16.0)),
-            ..default()
-        },
-        transform: Transform {
-            translation: Vec2::splat(0.0).extend(20.0),
-            ..default()
-        },
-        ..default()
-    });
+        })
+        .insert(Name::from("FarmFront"));
 }
 
 fn spawn_camera(mut commands: Commands) {

@@ -18,8 +18,9 @@ impl Plugin for SheepPlugin {
     }
 }
 
-const X_MAX_POS_OFFSET: f32 = 10.0;
-const Y_MAX_POS_OFFSET: f32 = 6.0;
+const BOUNDS_X: Vec2 = Vec2::new(-6.2, 6.2);
+const BOUNDS_Y: Vec2 = Vec2::new(-6.4, 7.0);
+
 const COUNT_INIT_SHEEP: usize = 10;
 
 const WANDER_TIME_SECS: f32 = 3.0;
@@ -119,14 +120,14 @@ fn init_sheep(mut commands: Commands, asset_server: Res<AssetServer>) {
     let mut rng = thread_rng();
 
     let mut sheep = Vec::with_capacity(COUNT_INIT_SHEEP);
-    for i in 0..=COUNT_INIT_SHEEP {
+    for i in 0..COUNT_INIT_SHEEP {
         let new_sheep = spawn_sheep(
             &mut commands,
             &asset_server,
             Transform {
                 translation: Vec3::new(
-                    rng.gen_range(-X_MAX_POS_OFFSET..=X_MAX_POS_OFFSET),
-                    rng.gen_range(-Y_MAX_POS_OFFSET..=Y_MAX_POS_OFFSET),
+                    rng.gen_range(BOUNDS_X.x..=BOUNDS_X.y),
+                    rng.gen_range(BOUNDS_Y.x..=BOUNDS_Y.y),
                     10.0,
                 ),
                 ..default()
@@ -255,6 +256,19 @@ fn wander(
 
         if sheep.state == WanderState::Wandering {
             transform.translation += sheep.wander_dir.extend(0.0) * speed.0 * time.delta_seconds();
+
+            if transform.translation.y > BOUNDS_Y.y {
+                transform.translation.y = BOUNDS_Y.y;
+            } else if transform.translation.y < BOUNDS_Y.x {
+                transform.translation.y = BOUNDS_Y.x;
+            }
+
+            if transform.translation.x > BOUNDS_X.y {
+                transform.translation.x = BOUNDS_X.y;
+            } else if transform.translation.x < BOUNDS_X.x {
+                transform.translation.x = BOUNDS_X.x;
+            }
+
             transform.rotation = Quat::from_rotation_z(
                 SHEEP_ROT_AMPLITUDE_RAD
                     * (entity.id() as f32
