@@ -11,13 +11,11 @@ pub fn drag(
     camera: Query<(&Camera, &GlobalTransform)>,
 ) {
     let window = windows.get_primary().unwrap();
-    let mouse_pos = window
-        .cursor_position()
-        .unwrap()
-        .screen_to_world(windows, camera);
-
-    for mut transform in q.iter_mut() {
-        transform.translation = mouse_pos.extend(0.0);
+    if let Some(mouse_pos) = window.cursor_position() {
+        let mouse_pos = mouse_pos.screen_to_world(windows, camera);
+        for mut transform in q.iter_mut() {
+            transform.translation = mouse_pos.extend(0.0);
+        }
     }
 }
 
