@@ -12,7 +12,9 @@ impl Plugin for SheepPlugin {
             .add_system_to_stage(CoreStage::PreUpdate, select_sheep)
             .add_system(drop_sheep)
             .add_system(update_sheep)
-            .add_system(wander);
+            .add_system(wander)
+            .add_system(wobble_sheep)
+            .add_system(shrink_sheep_on_drop);
     }
 }
 
@@ -27,6 +29,7 @@ const MAX_WANDER_TIME_DEVIANCE_PERCENT: f32 = 0.2;
 const SHEEP_WANDER_SPEED: f32 = 1.0;
 const SHEEP_ROT_AMPLITUDE_RAD: f32 = 10.0 * (std::f32::consts::PI / 180.0);
 const SHEEP_ROT_WAVELENGTH_SECS_INV: f32 = 8.0;
+const SHEEP_WOBBLE_DRAGGED_SECS_INV: f32 = 24.0;
 
 #[derive(Component, Default)]
 pub struct Sheep {
@@ -229,7 +232,7 @@ fn drop_sheep(
 pub struct Speed(f32);
 
 fn wander(
-    mut sheeps: Query<(Entity, &mut Wander, &mut Transform, &Speed), With<Sheep>>,
+    mut sheeps: Query<(Entity, &mut Wander, &mut Transform, &Speed), (With<Sheep>, Without<Drag>)>,
     time: Res<Time>,
 ) {
     for (entity, mut sheep, mut transform, speed) in sheeps.iter_mut() {
@@ -258,6 +261,29 @@ fn wander(
                         + sheep.timer.elapsed_secs() as f32 * SHEEP_ROT_WAVELENGTH_SECS_INV)
                         .sin(),
             );
+        }
+    }
+}
+
+// Wobble when they're picked up
+fn wobble_sheep(mut transforms: Query<&mut Transform, With<Drag>>, time: Res<Time>) {
+    for mut transform in transforms.iter_mut() {
+        transform.scale = Vec2::splat(1.2).extend(0.0);
+        transform.rotation = Quat::from_rotation_z(
+            SHEEP_ROT_AMPLITUDE_RAD
+                * (time.seconds_since_startup() as f32 * SHEEP_WOBBLE_DRAGGED_SECS_INV).sin(),
+        );
+    }
+}
+
+fn shrink_sheep_on_drop(
+    mut sheeps: Query<&mut Transform, With<Sheep>>,
+    dropped: RemovedComponents<Drag>,
+) {
+    for dropped in dropped.iter() {
+        if let Ok(mut transform) = sheeps.get_mut(dropped) {
+            transform.scale = Vec3::splat(1.0);
+            transform.rotation = Quat::IDENTITY;
         }
     }
 }
