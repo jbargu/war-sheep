@@ -10,16 +10,19 @@ impl Plugin for SheepPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(init_sheep)
             .add_system_to_stage(CoreStage::PreUpdate, select_sheep)
+            .add_system_to_stage(CoreStage::PostUpdate, bounds_check)
             .add_system(drop_sheep)
             .add_system(update_sheep)
             .add_system(wander)
             .add_system(wobble_sheep)
-            .add_system(shrink_sheep_on_drop);
+            .add_system(shrink_sheep_on_drop)
+            .add_system(update_sheep_ordering);
     }
 }
 
-const X_MAX_POS_OFFSET: f32 = 10.0;
-const Y_MAX_POS_OFFSET: f32 = 6.0;
+const PEN_BOUNDS_X: Vec2 = Vec2::new(-6.2, 6.2);
+const PEN_BOUNDS_Y: Vec2 = Vec2::new(-6.4, 7.0);
+
 const COUNT_INIT_SHEEP: usize = 10;
 
 const WANDER_TIME_SECS: f32 = 3.0;
@@ -108,6 +111,10 @@ fn spawn_sheep(
                 false => WanderState::Idling,
             },
         ))
+        .insert(Bounds {
+            x: (PEN_BOUNDS_X.x, PEN_BOUNDS_X.y),
+            y: (PEN_BOUNDS_Y.x, PEN_BOUNDS_Y.y),
+        })
         .insert(Speed(SHEEP_WANDER_SPEED))
         .id()
 }
@@ -119,15 +126,15 @@ fn init_sheep(mut commands: Commands, asset_server: Res<AssetServer>) {
     let mut rng = thread_rng();
 
     let mut sheep = Vec::with_capacity(COUNT_INIT_SHEEP);
-    for i in 0..=COUNT_INIT_SHEEP {
+    for i in 0..COUNT_INIT_SHEEP {
         let new_sheep = spawn_sheep(
             &mut commands,
             &asset_server,
             Transform {
                 translation: Vec3::new(
-                    rng.gen_range(-X_MAX_POS_OFFSET..=X_MAX_POS_OFFSET),
-                    rng.gen_range(-Y_MAX_POS_OFFSET..=Y_MAX_POS_OFFSET),
-                    0.0,
+                    rng.gen_range(PEN_BOUNDS_X.x..=PEN_BOUNDS_X.y),
+                    rng.gen_range(PEN_BOUNDS_Y.x..=PEN_BOUNDS_Y.y),
+                    10.0,
                 ),
                 ..default()
             },
@@ -203,7 +210,8 @@ fn drop_sheep(
                 .filter(|(_, _, transform)| {
                     transform
                         .translation
-                        .distance(dropped_transform.translation)
+                        .truncate()
+                        .distance(dropped_transform.translation.truncate())
                         <= transform.scale.x
                 })
                 .find(|(entity, _, _)| entity.id() != drop.id())
@@ -265,6 +273,30 @@ fn wander(
     }
 }
 
+#[derive(Component)]
+struct Bounds {
+    x: (f32, f32),
+    y: (f32, f32),
+}
+
+// This system (and `Bounds` component) are pretty generic and should probably be moved to a
+// different module if another type of entity ends up using it
+fn bounds_check(mut transforms: Query<(&mut Transform, &Bounds), Changed<Transform>>) {
+    for (mut transform, bounds) in transforms.iter_mut() {
+        if transform.translation.y > bounds.y.1 {
+            transform.translation.y = bounds.y.1;
+        } else if transform.translation.y < bounds.y.0 {
+            transform.translation.y = bounds.y.0;
+        }
+
+        if transform.translation.x > bounds.x.1 {
+            transform.translation.x = bounds.x.1;
+        } else if transform.translation.x < bounds.x.0 {
+            transform.translation.x = bounds.x.0
+        }
+    }
+}
+
 // Wobble when they're picked up
 fn wobble_sheep(mut transforms: Query<&mut Transform, With<Drag>>, time: Res<Time>) {
     for mut transform in transforms.iter_mut() {
@@ -284,6 +316,27 @@ fn shrink_sheep_on_drop(
         if let Ok(mut transform) = sheeps.get_mut(dropped) {
             transform.scale = Vec3::splat(1.0);
             transform.rotation = Quat::IDENTITY;
+        }
+    }
+}
+
+// Update the z axis of all the sheep so that they are ordered closer to the camera if they are
+// further down the screen
+// Some magic numbers in here*, end of the day, I'm getting tired, sorry!
+//
+// *refer to `main.rs#L1`
+fn update_sheep_ordering(
+    mut q: Query<(Entity, &mut Transform), (With<Sheep>, Changed<Transform>)>,
+    dragged: Query<&Drag>,
+) {
+    for (entity, mut transform) in q.iter_mut() {
+        transform.translation.z = match dragged.get(entity) {
+            Ok(_) => 9.9,
+            Err(_) => {
+                9.9 - ((transform.translation.y - PEN_BOUNDS_Y.x).abs()
+                    / (PEN_BOUNDS_Y.y - PEN_BOUNDS_Y.x).abs())
+                    * 9.79
+            }
         }
     }
 }
