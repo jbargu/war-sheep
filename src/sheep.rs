@@ -2,19 +2,17 @@ use bevy::prelude::*;
 
 use rand::{thread_rng, Rng};
 
+use crate::utils::{bounds_check, Bounds, Health, Speed};
 use crate::{drag::Drag, GameState, ScreenToWorld};
 
 pub struct SheepPlugin;
 
 impl Plugin for SheepPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system_set(SystemSet::on_enter(GameState::Herding).with_system(init_sheep))
+        app.add_startup_system(init_sheep)
+            // If you want the sheep to respawn after Battle, uncomment below, and comment above
+            //app.add_system_set(SystemSet::on_enter(GameState::Herding).with_system(init_sheep))
             .add_startup_system_to_stage(StartupStage::PreStartup, load_graphics)
-            //.add_system_set(
-            //SystemSet::on_update(GameState::Herding)
-            //.before("update")
-            //.with_system(select_sheep),
-            //)
             .add_system_set(
                 SystemSet::on_update(GameState::Herding)
                     .label("update")
@@ -24,7 +22,8 @@ impl Plugin for SheepPlugin {
                     .with_system(wander)
                     .with_system(wobble_sheep)
                     .with_system(shrink_sheep_on_drop)
-                    .with_system(update_sheep_ordering),
+                    .with_system(update_sheep_ordering)
+                    .with_system(keyboard_input),
             )
             .add_system_set(
                 SystemSet::on_update(GameState::Herding)
@@ -152,6 +151,7 @@ fn spawn_sheep(
             y: (PEN_BOUNDS_Y.x, PEN_BOUNDS_Y.y),
         })
         .insert(Speed(SHEEP_WANDER_SPEED))
+        .insert(Health(1.0))
         .id();
 
     let head = commands
@@ -358,10 +358,7 @@ fn update_select_box(mut q: Query<&mut Visibility, With<Select>>, dragged: Query
     }
 }
 
-#[derive(Component)]
-pub struct Speed(f32);
-
-fn wander(
+pub fn wander(
     mut sheeps: Query<(Entity, &mut Wander, &mut Transform, &Speed), (With<Sheep>, Without<Drag>)>,
     time: Res<Time>,
 ) {
@@ -395,32 +392,8 @@ fn wander(
     }
 }
 
-#[derive(Component)]
-struct Bounds {
-    x: (f32, f32),
-    y: (f32, f32),
-}
-
-// This system (and `Bounds` component) are pretty generic and should probably be moved to a
-// different module if another type of entity ends up using it
-fn bounds_check(mut transforms: Query<(&mut Transform, &Bounds), Changed<Transform>>) {
-    for (mut transform, bounds) in transforms.iter_mut() {
-        if transform.translation.y > bounds.y.1 {
-            transform.translation.y = bounds.y.1;
-        } else if transform.translation.y < bounds.y.0 {
-            transform.translation.y = bounds.y.0;
-        }
-
-        if transform.translation.x > bounds.x.1 {
-            transform.translation.x = bounds.x.1;
-        } else if transform.translation.x < bounds.x.0 {
-            transform.translation.x = bounds.x.0
-        }
-    }
-}
-
 // Wobble when they're picked up
-fn wobble_sheep(mut transforms: Query<&mut Transform, With<Drag>>, time: Res<Time>) {
+pub fn wobble_sheep(mut transforms: Query<&mut Transform, With<Drag>>, time: Res<Time>) {
     for mut transform in transforms.iter_mut() {
         transform.scale = Vec2::splat(1.2).extend(1.0);
         transform.rotation = Quat::from_rotation_z(
@@ -447,7 +420,7 @@ fn shrink_sheep_on_drop(
 // Some magic numbers in here*, end of the day, I'm getting tired, sorry!
 //
 // *refer to `main.rs#L1`
-fn update_sheep_ordering(
+pub fn update_sheep_ordering(
     mut q: Query<(Entity, &mut Transform), (With<Sheep>, Changed<Transform>)>,
     dragged: Query<&Drag>,
 ) {
@@ -463,7 +436,7 @@ fn update_sheep_ordering(
     }
 }
 
-fn update_sheep(mut q: Query<(&mut TextureAtlasSprite, &mut Speed, &Sheep), Changed<Sheep>>) {
+pub fn update_sheep(mut q: Query<(&mut TextureAtlasSprite, &mut Speed, &Sheep), Changed<Sheep>>) {
     for (mut sprite, mut speed, sheep) in q.iter_mut() {
         sprite.color = Color::WHITE * sheep.col;
         speed.0 = 1.0 + sheep.speed_mod;
@@ -488,4 +461,11 @@ fn load_graphics(
     );
     let atlas_handle = texture_atlases.add(atlas);
     commands.insert_resource(SheepSprites(atlas_handle));
+}
+
+fn keyboard_input(mut keys: ResMut<Input<KeyCode>>, mut game_state: ResMut<State<GameState>>) {
+    if keys.just_released(KeyCode::Key1) {
+        game_state.set(GameState::Battle).unwrap();
+        keys.reset(KeyCode::Key1);
+    }
 }
