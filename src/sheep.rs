@@ -50,7 +50,7 @@ impl Sheep {
     fn combine(&self, other: &Self) -> Self {
         let mut rng = thread_rng();
         Self {
-            col: 0.1f32.max((self.col + other.col) / 2.0),
+            col: 0.1f32.max((self.col + other.col) / 2.0 + rng.gen_range(-0.1..=0.1)),
             speed_mod: 0.0f32.max(
                 match rand::random() {
                     true => self.speed_mod,
