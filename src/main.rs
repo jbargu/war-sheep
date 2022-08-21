@@ -1,7 +1,10 @@
 // Sprite z-axis ordering
 //
 // 0    - background
-// 10   - sheep
+// ...
+//  |   - sheep
+// ...
+// 10
 // 20   - foreground
 
 #![allow(clippy::type_complexity)]
