@@ -19,6 +19,14 @@ mod sheep;
 const RESOLUTION: f32 = 16.0 / 9.0;
 const WINDOW_HEIGHT: f32 = 900.0;
 
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum GameState {
+    MainMenu,
+    Herding,
+    Battle,
+    Paused,
+}
+
 trait ScreenToWorld {
     // NOTE: if we end up using multiple screens, this will have to be adjusted
     fn screen_to_world(
@@ -60,8 +68,12 @@ fn main() {
         .add_plugin(debug::DebugPlugin)
         .add_plugin(sheep::SheepPlugin)
         .add_plugin(drag::DragPlugin)
-        .add_startup_system(spawn_camera)
-        .add_startup_system(spawn_farm_scene)
+        .add_state(GameState::Herding)
+        .add_system_set(
+            SystemSet::on_enter(GameState::Herding)
+                .with_system(spawn_camera)
+                .with_system(spawn_farm_scene),
+        )
         .run();
 }
 

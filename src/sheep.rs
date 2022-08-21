@@ -2,24 +2,37 @@ use bevy::prelude::*;
 
 use rand::{thread_rng, Rng};
 
-use crate::{drag::Drag, ScreenToWorld};
+use crate::{drag::Drag, GameState, ScreenToWorld};
 
 pub struct SheepPlugin;
 
 impl Plugin for SheepPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(init_sheep)
+        app.add_system_set(SystemSet::on_enter(GameState::Herding).with_system(init_sheep))
             .add_startup_system_to_stage(StartupStage::PreStartup, load_graphics)
-            .add_system_to_stage(CoreStage::PreUpdate, grab_sheep)
-            .add_system(sheep_select)
-            .add_system(update_select_box)
-            .add_system(drop_sheep)
-            .add_system(wander)
-            .add_system(wobble_sheep)
-            .add_system(shrink_sheep_on_drop)
-            .add_system(update_sheep_ordering)
-            .add_system_to_stage(CoreStage::PostUpdate, bounds_check)
-            .add_system_to_stage(CoreStage::PostUpdate, update_sheep);
+            //.add_system_set(
+            //SystemSet::on_update(GameState::Herding)
+            //.before("update")
+            //.with_system(select_sheep),
+            //)
+            .add_system_set(
+                SystemSet::on_update(GameState::Herding)
+                    .label("update")
+                    .with_system(sheep_select)
+                    .with_system(update_select_box)
+                    .with_system(drop_sheep)
+                    .with_system(wander)
+                    .with_system(wobble_sheep)
+                    .with_system(shrink_sheep_on_drop)
+                    .with_system(update_sheep_ordering),
+            )
+            .add_system_set(
+                SystemSet::on_update(GameState::Herding)
+                    .after("update")
+                    .with_system(bounds_check)
+                    .with_system(update_sheep),
+            )
+            .add_system_to_stage(CoreStage::PreUpdate, grab_sheep);
     }
 }
 
@@ -332,19 +345,16 @@ fn sheep_select(
 }
 
 // NOTE: This only works if we preserve the invariant that only one entity is being dragged at any
-// given time. 
-fn update_select_box(
-    mut q: Query<&mut Visibility, With<Select>>,
-    dragged: Query<&Drag>,
-) {
+// given time.
+fn update_select_box(mut q: Query<&mut Visibility, With<Select>>, dragged: Query<&Drag>) {
     if !dragged.is_empty() {
         for mut vis in q.iter_mut() {
             vis.is_visible = false;
-        } 
+        }
     } else {
         for mut vis in q.iter_mut() {
             vis.is_visible = true;
-        } 
+        }
     }
 }
 

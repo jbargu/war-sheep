@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::ScreenToWorld;
+use crate::{GameState, ScreenToWorld};
 
 #[derive(Component)]
 pub struct Drag;
@@ -23,6 +23,6 @@ pub struct DragPlugin;
 
 impl Plugin for DragPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(drag);
+        app.add_system_set(SystemSet::on_update(GameState::Herding).with_system(drag));
     }
 }
