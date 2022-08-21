@@ -10,7 +10,9 @@ impl Plugin for SheepPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(init_sheep)
             .add_startup_system_to_stage(StartupStage::PreStartup, load_graphics)
-            .add_system_to_stage(CoreStage::PreUpdate, select_sheep)
+            .add_system_to_stage(CoreStage::PreUpdate, grab_sheep)
+            .add_system(sheep_select)
+            .add_system(update_select_box)
             .add_system(drop_sheep)
             .add_system(wander)
             .add_system(wobble_sheep)
@@ -202,7 +204,7 @@ fn init_sheep(mut commands: Commands, texture: Res<SheepSprites>) {
         .push_children(&sheep);
 }
 
-fn select_sheep(
+fn grab_sheep(
     mut commands: Commands,
     sheep_q: Query<(Entity, &Transform), With<Sheep>>,
     mouse_btn: Res<Input<MouseButton>>,
@@ -278,6 +280,71 @@ fn drop_sheep(
                 commands.entity(sheep_parent.single()).add_child(new_sheep);
             }
         }
+    }
+}
+
+#[derive(Component)]
+struct Select;
+
+// Would prefer to be called `select_sheep` but there was a previous system of that name (now
+// changed to `grab_sheep`) and I didn't want to give confusing merge conflicts
+/// Add the little select icon to the sheep when they're selected, this will also display their
+/// stats in the future
+fn sheep_select(
+    mut commands: Commands,
+    q: Query<Entity, (With<Sheep>, Added<Drag>)>,
+    currently_selected: Query<Entity, With<Select>>,
+    assets: Res<AssetServer>,
+) {
+    let mut added_this_frame = Vec::new();
+    if !q.is_empty() {
+        for entity in currently_selected.iter() {
+            commands.entity(entity).despawn_recursive();
+        }
+    }
+
+    for entity in q.iter() {
+        // NOTE: This needs some work. Namely, it shouldn't rotate with the sheep - but the only
+        // way I can think of to achieve that would be to have the sheep's body sprite be a child of
+        // the sheep object, which is some refactoring I don't want to do right now, but will have
+        // to do at some point unless we can think of another way
+        let select_box = commands
+            .spawn_bundle(SpriteBundle {
+                texture: assets.load("OutlineBox.png"),
+                sprite: Sprite {
+                    // TODO: Fix the size scaling issue
+                    custom_size: Some(Vec2::splat(20.0) / 16.0),
+                    ..default()
+                },
+                transform: Transform {
+                    translation: Vec2::ZERO.extend(30.0),
+                    ..default()
+                },
+                ..default()
+            })
+            .insert(Select)
+            .insert(Name::from("SelectBox"))
+            .id();
+        commands.entity(entity).add_child(select_box);
+
+        added_this_frame.push(select_box.id());
+    }
+}
+
+// NOTE: This only works if we preserve the invariant that only one entity is being dragged at any
+// given time. 
+fn update_select_box(
+    mut q: Query<&mut Visibility, With<Select>>,
+    dragged: Query<&Drag>,
+) {
+    if !dragged.is_empty() {
+        for mut vis in q.iter_mut() {
+            vis.is_visible = false;
+        } 
+    } else {
+        for mut vis in q.iter_mut() {
+            vis.is_visible = true;
+        } 
     }
 }
 
