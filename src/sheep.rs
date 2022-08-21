@@ -10,7 +10,7 @@ impl Plugin for SheepPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(init_sheep)
             .add_system_to_stage(CoreStage::PreUpdate, select_sheep)
-            .add_system_to_stage(CoreStage::PostUpdate, dragged_sheep_bounds_check)
+            .add_system_to_stage(CoreStage::PostUpdate, bounds_check)
             .add_system(drop_sheep)
             .add_system(update_sheep)
             .add_system(wander)
@@ -20,8 +20,8 @@ impl Plugin for SheepPlugin {
     }
 }
 
-const BOUNDS_X: Vec2 = Vec2::new(-6.2, 6.2);
-const BOUNDS_Y: Vec2 = Vec2::new(-6.4, 7.0);
+const PEN_BOUNDS_X: Vec2 = Vec2::new(-6.2, 6.2);
+const PEN_BOUNDS_Y: Vec2 = Vec2::new(-6.4, 7.0);
 
 const COUNT_INIT_SHEEP: usize = 10;
 
@@ -111,6 +111,10 @@ fn spawn_sheep(
                 false => WanderState::Idling,
             },
         ))
+        .insert(Bounds {
+            x: (PEN_BOUNDS_X.x, PEN_BOUNDS_X.y),
+            y: (PEN_BOUNDS_Y.x, PEN_BOUNDS_Y.y),
+        })
         .insert(Speed(SHEEP_WANDER_SPEED))
         .id()
 }
@@ -128,8 +132,8 @@ fn init_sheep(mut commands: Commands, asset_server: Res<AssetServer>) {
             &asset_server,
             Transform {
                 translation: Vec3::new(
-                    rng.gen_range(BOUNDS_X.x..=BOUNDS_X.y),
-                    rng.gen_range(BOUNDS_Y.x..=BOUNDS_Y.y),
+                    rng.gen_range(PEN_BOUNDS_X.x..=PEN_BOUNDS_X.y),
+                    rng.gen_range(PEN_BOUNDS_Y.x..=PEN_BOUNDS_Y.y),
                     10.0,
                 ),
                 ..default()
@@ -259,19 +263,6 @@ fn wander(
 
         if sheep.state == WanderState::Wandering {
             transform.translation += sheep.wander_dir.extend(0.0) * speed.0 * time.delta_seconds();
-
-            if transform.translation.y > BOUNDS_Y.y {
-                transform.translation.y = BOUNDS_Y.y;
-            } else if transform.translation.y < BOUNDS_Y.x {
-                transform.translation.y = BOUNDS_Y.x;
-            }
-
-            if transform.translation.x > BOUNDS_X.y {
-                transform.translation.x = BOUNDS_X.y;
-            } else if transform.translation.x < BOUNDS_X.x {
-                transform.translation.x = BOUNDS_X.x;
-            }
-
             transform.rotation = Quat::from_rotation_z(
                 SHEEP_ROT_AMPLITUDE_RAD
                     * (entity.id() as f32
@@ -282,18 +273,26 @@ fn wander(
     }
 }
 
-fn dragged_sheep_bounds_check(mut transforms: Query<&mut Transform, (With<Sheep>, With<Drag>)>) {
-    for mut transform in transforms.iter_mut() {
-        if transform.translation.y > BOUNDS_Y.y {
-            transform.translation.y = BOUNDS_Y.y;
-        } else if transform.translation.y < BOUNDS_Y.x {
-            transform.translation.y = BOUNDS_Y.x;
+#[derive(Component)]
+struct Bounds {
+    x: (f32, f32),
+    y: (f32, f32),
+}
+
+// This system (and `Bounds` component) are pretty generic and should probably be moved to a
+// different module if another type of entity ends up using it
+fn bounds_check(mut transforms: Query<(&mut Transform, &Bounds), Changed<Transform>>) {
+    for (mut transform, bounds) in transforms.iter_mut() {
+        if transform.translation.y > bounds.y.1 {
+            transform.translation.y = bounds.y.1;
+        } else if transform.translation.y < bounds.y.0 {
+            transform.translation.y = bounds.y.0;
         }
 
-        if transform.translation.x > BOUNDS_X.y {
-            transform.translation.x = BOUNDS_X.y;
-        } else if transform.translation.x < BOUNDS_X.x {
-            transform.translation.x = BOUNDS_X.x;
+        if transform.translation.x > bounds.x.1 {
+            transform.translation.x = bounds.x.1;
+        } else if transform.translation.x < bounds.x.0 {
+            transform.translation.x = bounds.x.0
         }
     }
 }
@@ -334,8 +333,8 @@ fn update_sheep_ordering(
         transform.translation.z = match dragged.get(entity) {
             Ok(_) => 9.9,
             Err(_) => {
-                9.9 - ((transform.translation.y - BOUNDS_Y.x).abs()
-                    / (BOUNDS_Y.y - BOUNDS_Y.x).abs())
+                9.9 - ((transform.translation.y - PEN_BOUNDS_Y.x).abs()
+                    / (PEN_BOUNDS_Y.y - PEN_BOUNDS_Y.x).abs())
                     * 9.79
             }
         }
