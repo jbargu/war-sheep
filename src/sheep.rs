@@ -9,14 +9,15 @@ pub struct SheepPlugin;
 impl Plugin for SheepPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(init_sheep)
+            .add_startup_system_to_stage(StartupStage::PreStartup, load_graphics)
             .add_system_to_stage(CoreStage::PreUpdate, select_sheep)
-            .add_system_to_stage(CoreStage::PostUpdate, bounds_check)
             .add_system(drop_sheep)
-            .add_system(update_sheep)
             .add_system(wander)
             .add_system(wobble_sheep)
             .add_system(shrink_sheep_on_drop)
-            .add_system(update_sheep_ordering);
+            .add_system(update_sheep_ordering)
+            .add_system_to_stage(CoreStage::PostUpdate, bounds_check)
+            .add_system_to_stage(CoreStage::PostUpdate, update_sheep);
     }
 }
 
@@ -37,7 +38,27 @@ const SHEEP_WOBBLE_DRAGGED_SECS_INV: f32 = 24.0;
 #[derive(Component, Default)]
 pub struct Sheep {
     // In future we can put all the sheep traits here
-    state: u8,
+    col: f32,
+    speed_mod: f32,
+}
+
+impl Sheep {
+    fn from_col(col: f32) -> Self {
+        Self { col, ..default() }
+    }
+
+    fn combine(&self, other: &Self) -> Self {
+        let mut rng = thread_rng();
+        Self {
+            col: 0.1f32.max((self.col + other.col) / 2.0),
+            speed_mod: 0.0f32.max(
+                match rand::random() {
+                    true => self.speed_mod,
+                    false => other.speed_mod,
+                } + rng.gen_range(0.0..=0.2),
+            ),
+        }
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -84,19 +105,19 @@ impl Wander {
 
 fn spawn_sheep(
     commands: &mut Commands,
-    asset_server: &Res<AssetServer>,
+    texture: &SheepSprites,
     transform: Transform,
     sheep: Sheep,
 ) -> Entity {
     let mut transform = transform;
     transform.rotation = Quat::IDENTITY;
-    commands
-        .spawn_bundle(SpriteBundle {
+    let sheep = commands
+        .spawn_bundle(SpriteSheetBundle {
             transform,
-            texture: asset_server.load("BaseSheep.png"),
-            sprite: Sprite {
-                color: Color::WHITE,
-                custom_size: Some(Vec2::splat(1.0)),
+            texture_atlas: texture.0.clone(),
+            sprite: TextureAtlasSprite {
+                index: 0,
+                custom_size: Some(Vec2::new(1.0, 1.0)),
                 ..default()
             },
             ..default()
@@ -116,20 +137,40 @@ fn spawn_sheep(
             y: (PEN_BOUNDS_Y.x, PEN_BOUNDS_Y.y),
         })
         .insert(Speed(SHEEP_WANDER_SPEED))
-        .id()
+        .id();
+
+    let head = commands
+        .spawn_bundle(SpriteSheetBundle {
+            texture_atlas: texture.0.clone(),
+            transform: Transform {
+                translation: Vec2::ZERO.extend(0.001),
+                ..default()
+            },
+            sprite: TextureAtlasSprite {
+                index: 1,
+                custom_size: Some(Vec2::new(1.0, 1.0)),
+                ..default()
+            },
+            ..default()
+        })
+        .id();
+
+    commands.entity(sheep).add_child(head);
+
+    sheep
 }
 
 #[derive(Component)]
 pub struct SheepParent;
 
-fn init_sheep(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn init_sheep(mut commands: Commands, texture: Res<SheepSprites>) {
     let mut rng = thread_rng();
 
     let mut sheep = Vec::with_capacity(COUNT_INIT_SHEEP);
     for i in 0..COUNT_INIT_SHEEP {
         let new_sheep = spawn_sheep(
             &mut commands,
-            &asset_server,
+            &texture,
             Transform {
                 translation: Vec3::new(
                     rng.gen_range(PEN_BOUNDS_X.x..=PEN_BOUNDS_X.y),
@@ -138,7 +179,12 @@ fn init_sheep(mut commands: Commands, asset_server: Res<AssetServer>) {
                 ),
                 ..default()
             },
-            Sheep::default(),
+            Sheep::from_col(if rng.gen_range(0.0..=1.0) >= 0.2 {
+                // White sheep more likely than black sheep
+                rng.gen_range(0.8..=1.0)
+            } else {
+                rng.gen_range(0.1..=0.3)
+            }),
         );
 
         sheep.push(
@@ -196,16 +242,19 @@ fn select_sheep(
     }
 }
 
+#[derive(Component)]
+struct Selected;
+
 fn drop_sheep(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    texture: Res<SheepSprites>,
     dropped: RemovedComponents<Drag>,
     sheep: Query<(Entity, &Sheep, &Transform)>,
     sheep_parent: Query<Entity, With<SheepParent>>,
 ) {
     for drop in dropped.iter() {
         if let Ok((_, sheep_component, dropped_transform)) = sheep.get(drop) {
-            if let Some((collided, _, collided_transform)) = sheep
+            if let Some((collided, collided_sheep_component, collided_transform)) = sheep
                 .iter()
                 .filter(|(_, _, transform)| {
                     transform
@@ -221,13 +270,9 @@ fn drop_sheep(
 
                 let new_sheep = spawn_sheep(
                     &mut commands,
-                    &asset_server,
+                    &texture,
                     *collided_transform,
-                    Sheep {
-                        // In here we would have the actual trait mutation / combination rather
-                        // than just incrementing a state value
-                        state: sheep_component.state + 1,
-                    },
+                    sheep_component.combine(collided_sheep_component),
                 );
 
                 commands.entity(sheep_parent.single()).add_child(new_sheep);
@@ -300,7 +345,7 @@ fn bounds_check(mut transforms: Query<(&mut Transform, &Bounds), Changed<Transfo
 // Wobble when they're picked up
 fn wobble_sheep(mut transforms: Query<&mut Transform, With<Drag>>, time: Res<Time>) {
     for mut transform in transforms.iter_mut() {
-        transform.scale = Vec2::splat(1.2).extend(0.0);
+        transform.scale = Vec2::splat(1.2).extend(1.0);
         transform.rotation = Quat::from_rotation_z(
             SHEEP_ROT_AMPLITUDE_RAD
                 * (time.seconds_since_startup() as f32 * SHEEP_WOBBLE_DRAGGED_SECS_INV).sin(),
@@ -341,14 +386,29 @@ fn update_sheep_ordering(
     }
 }
 
-fn update_sheep(mut q: Query<(&mut Sprite, &Sheep), Changed<Sheep>>) {
-    for (mut sprite, sheep) in q.iter_mut() {
-        sprite.color = match sheep.state {
-            0 => Color::rgb(1.0, 1.0, 1.0),
-            1 => Color::rgb(1.0, 0.0, 0.0),
-            2 => Color::rgb(0.0, 1.0, 0.0),
-            3 => Color::rgb(0.0, 0.0, 1.0),
-            _ => Color::PURPLE,
-        }
+fn update_sheep(mut q: Query<(&mut TextureAtlasSprite, &mut Speed, &Sheep), Changed<Sheep>>) {
+    for (mut sprite, mut speed, sheep) in q.iter_mut() {
+        sprite.color = Color::WHITE * sheep.col;
+        speed.0 = 1.0 + sheep.speed_mod;
     }
+}
+
+struct SheepSprites(Handle<TextureAtlas>);
+
+fn load_graphics(
+    mut commands: Commands,
+    assets: Res<AssetServer>,
+    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
+) {
+    let image = assets.load("BaseSheep.png");
+    let atlas = TextureAtlas::from_grid_with_padding(
+        image,
+        Vec2::new(16.0, 16.0),
+        2,
+        1,
+        Vec2::splat(2.0),
+        Vec2::ZERO,
+    );
+    let atlas_handle = texture_atlases.add(atlas);
+    commands.insert_resource(SheepSprites(atlas_handle));
 }
