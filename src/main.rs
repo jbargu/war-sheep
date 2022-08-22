@@ -1,20 +1,35 @@
 // Sprite z-axis ordering
 //
 // 0    - background
-// 10   - sheep
+// ...
+//  |   - sheep
+// ...
+// 10
 // 20   - foreground
 
 #![allow(clippy::type_complexity)]
 
 use bevy::prelude::*;
 use bevy::render::texture::ImageSettings;
+use bevy_simple_stat_bars::prelude::*;
+use utils::{despawn_entities_with_component, UnloadOnExit};
 
+mod battle;
 mod debug;
 mod drag;
 mod sheep;
+mod utils;
 
 const RESOLUTION: f32 = 16.0 / 9.0;
 const WINDOW_HEIGHT: f32 = 900.0;
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum GameState {
+    MainMenu,
+    Herding,
+    Battle,
+    Paused,
+}
 
 trait ScreenToWorld {
     // NOTE: if we end up using multiple screens, this will have to be adjusted
@@ -53,12 +68,20 @@ fn main() {
             resizable: false, // I am using tiling WM so this is just easier for time being, can
             ..default()       // adjust later
         })
+        .insert_resource(battle::Level(1))
+        .add_state(GameState::Herding)
         .add_plugins(DefaultPlugins)
         .add_plugin(debug::DebugPlugin)
         .add_plugin(sheep::SheepPlugin)
         .add_plugin(drag::DragPlugin)
+        .add_plugin(battle::BattlePlugin)
+        .add_plugin(StatBarsPlugin)
         .add_startup_system(spawn_camera)
-        .add_startup_system(spawn_farm_scene)
+        .add_system_set(SystemSet::on_enter(GameState::Herding).with_system(spawn_farm_scene))
+        .add_system_set(
+            SystemSet::on_exit(GameState::Herding)
+                .with_system(despawn_entities_with_component::<UnloadOnExit>),
+        )
         .run();
 }
 
@@ -77,7 +100,9 @@ fn spawn_farm_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
             },
             ..default()
         })
+        .insert(UnloadOnExit)
         .insert(Name::from("FarmBehind"));
+
     commands
         .spawn_bundle(SpriteBundle {
             texture: asset_server.load("SheepFarmInfront.png"),
@@ -91,6 +116,7 @@ fn spawn_farm_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
             },
             ..default()
         })
+        .insert(UnloadOnExit)
         .insert(Name::from("FarmFront"));
 }
 
