@@ -94,7 +94,7 @@ fn spawn_farm_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
         .spawn_bundle(SpriteBundle {
             texture: asset_server.load("SheepFarmBehind.png"),
             sprite: Sprite {
-                custom_size: Some(Vec2::splat(260.0 / 16.0)),
+                custom_size: Some(Vec2::new(550.0, 300.0) / 16.0),
                 ..default()
             },
             transform: Transform {
@@ -110,7 +110,7 @@ fn spawn_farm_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
         .spawn_bundle(SpriteBundle {
             texture: asset_server.load("SheepFarmInfront.png"),
             sprite: Sprite {
-                custom_size: Some(Vec2::splat(260.0 / 16.0)),
+                custom_size: Some(Vec2::new(550.0, 300.0) / 16.0),
                 ..default()
             },
             transform: Transform {
