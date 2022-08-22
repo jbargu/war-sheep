@@ -15,7 +15,7 @@ fn test_text(mut commands: Commands, texture: Res<AsciiSheet>) {
         &texture,
         Vec2::ZERO.extend(50.0),
         Color::WHITE,
-        "test text ABC",
+        "test text\nABC",
     );
 }
 
@@ -34,30 +34,40 @@ pub fn write_text(
             transform: Transform::from_translation(translation),
             ..default()
         })
-        .insert(Name::from(format!("Text: {}", text)))
+        .insert(Name::from(format!(
+            "[TEXT] {}{}",
+            text.chars().take(10).collect::<String>(),
+            match text.chars().count().cmp(&10) {
+                std::cmp::Ordering::Greater => "...",
+                _ => "",
+            }
+        )))
         .id();
 
-    let chars = text
-        .chars()
-        .enumerate()
-        .map(|(i, c)| {
-            commands
-                .spawn_bundle(SpriteSheetBundle {
-                    transform: Transform::from_translation(
-                        translation + Vec3::X * i as f32 * LETTER_TILE_WIDTH / 16.0,
-                    ),
-                    texture_atlas: texture.0.clone(),
-                    sprite: TextureAtlasSprite {
-                        color,
-                        index: c as usize,
-                        custom_size: Some(Vec2::splat(LETTER_TILE_WIDTH) / 16.0),
+    let mut chars = Vec::with_capacity(text.len());
+    for (row, line) in text.lines().enumerate() {
+        for (col, char) in line.chars().enumerate() {
+            chars.push(
+                commands
+                    .spawn_bundle(SpriteSheetBundle {
+                        transform: Transform::from_translation(
+                            translation
+                                + Vec3::X * col as f32 * LETTER_TILE_WIDTH / 16.0
+                                + Vec3::Y * row as f32 * -LETTER_TILE_WIDTH / 16.0,
+                        ),
+                        texture_atlas: texture.0.clone(),
+                        sprite: TextureAtlasSprite {
+                            color,
+                            index: char as usize,
+                            custom_size: Some(Vec2::splat(LETTER_TILE_WIDTH) / 16.0),
+                            ..default()
+                        },
                         ..default()
-                    },
-                    ..default()
-                })
-                .id()
-        })
-        .collect::<Vec<_>>();
+                    })
+                    .id(),
+            );
+        }
+    }
 
     commands.entity(text_parent).push_children(&chars);
     text_parent
