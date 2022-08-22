@@ -102,7 +102,7 @@ impl Sheep {
         let mut rng = thread_rng();
         Self {
             col: 0.1f32.max((self.col + other.col) / 2.0 + rng.gen_range(-0.1..=0.1)),
-            ..default()
+            levels: self.levels + other.levels,
         }
     }
 }
