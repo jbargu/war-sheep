@@ -2,51 +2,47 @@ use bevy::prelude::*;
 
 use crate::sheep;
 use crate::utils::{
-    bounds_check, AttackRange, AttackValue, Bounds, Health, PursuitType, Speed, SpottingRange,
+    bounds_check, AttackRange, AttackValue, Health, PursuitType, Speed, SpottingRange,
 };
 use rand::{thread_rng, Rng};
 
 use crate::GameState;
+use health_bars::create_sheep_hp_bar;
+use war_machines::{new_war_machine, WarMachine};
 
-// Every WarMachine is defined by:
-// - `SpottingRange`: if a sheep is found within this radius, it will be pursued
-// - `AttackRange`: if a sheep is within this radius, it will be attacked by `AttackValue`
-// - `AttackValue`: attack damage value
-// - `Health`:  if health value falls below 0, it dies
-// - `Speed`: how fast it moves
-// - `PursuitType`: how it selects the next sheep to hunt
-// - any other traits that may alter behaviour
-#[derive(Component, Default)]
-pub struct WarMachine;
+mod health_bars;
+mod war_machines;
 
 pub struct Level(pub usize);
 
-const BATTLEFIELD_BOUNDS_X: Vec2 = Vec2::new(-6.2, 6.2);
-const BATTLEFIELD_BOUNDS_Y: Vec2 = Vec2::new(-6.4, 7.0);
+pub const BATTLEFIELD_BOUNDS_X: Vec2 = Vec2::new(-6.2, 6.2);
+pub const BATTLEFIELD_BOUNDS_Y: Vec2 = Vec2::new(-6.4, 7.0);
 
 pub struct BattlePlugin;
 
 impl Plugin for BattlePlugin {
     fn build(&self, app: &mut App) {
-        app.add_system_set(SystemSet::on_enter(GameState::Battle).with_system(init_level))
-            .add_system_set(
-                SystemSet::on_update(GameState::Battle)
-                    .with_system(move_and_attack)
-                    .with_system(remove_dead_sheep)
-                    .with_system(sheep::update_sheep)
-                    .with_system(sheep::wander)
-                    .with_system(sheep::wobble_sheep)
-                    .with_system(sheep::update_sheep_ordering)
-                    .with_system(check_end_battle),
-            )
-            .add_system_set(
-                SystemSet::on_update(GameState::Battle)
-                    .after("update")
-                    .with_system(bounds_check),
-            )
-            .add_system_set(
-                SystemSet::on_exit(GameState::Battle).with_system(despawn_war_machines),
-            );
+        app.add_system_set(
+            SystemSet::on_enter(GameState::Battle)
+                .with_system(init_level)
+                .with_system(add_health_bars_to_sheep),
+        )
+        .add_system_set(
+            SystemSet::on_update(GameState::Battle)
+                .with_system(move_and_attack)
+                .with_system(remove_dead_sheep)
+                .with_system(sheep::update_sheep)
+                .with_system(sheep::wander)
+                .with_system(sheep::wobble_sheep)
+                .with_system(sheep::update_sheep_ordering)
+                .with_system(check_end_battle),
+        )
+        .add_system_set(
+            SystemSet::on_update(GameState::Battle)
+                .after("update")
+                .with_system(bounds_check),
+        )
+        .add_system_set(SystemSet::on_exit(GameState::Battle).with_system(despawn_war_machines));
     }
 }
 
@@ -56,6 +52,10 @@ fn init_level(mut commands: Commands, level: Res<Level>, asset_server: Res<Asset
         2 => setup_level2(&mut commands, &asset_server),
         _ => panic!("This level does not exists!"),
     }
+}
+
+fn add_health_bars_to_sheep(mut commands: Commands, sheep_q: Query<Entity, With<sheep::Sheep>>) {
+    sheep_q.for_each(|sheep| create_sheep_hp_bar(sheep, &mut commands));
 }
 
 fn move_and_attack(
@@ -109,7 +109,7 @@ fn move_and_attack(
 
             // If the sheep is close enough, attack it
             if difference.length() <= attack_range.0 {
-                sheep_health.0 -= attack_value.0;
+                sheep_health.current -= attack_value.0;
             }
 
             // Move towards the sheep depending on the `pursuit_type`
@@ -129,7 +129,7 @@ fn remove_dead_sheep(
     sheep_q: Query<(Entity, &mut Health), (With<sheep::Sheep>, Changed<Health>)>,
 ) {
     for (sheep, health) in sheep_q.iter() {
-        if health.0 <= 0.0 {
+        if health.current <= 0.0 {
             commands.entity(sheep).despawn_recursive();
         }
     }
@@ -139,7 +139,7 @@ fn check_end_battle(
     sheep_q: Query<Entity, (With<sheep::Sheep>, Without<WarMachine>)>,
     war_machines_q: Query<Entity, (Without<sheep::Sheep>, With<WarMachine>)>,
     mut game_state: ResMut<State<GameState>>,
-    mut level: ResMut<Level>
+    mut level: ResMut<Level>,
 ) {
     if sheep_q.is_empty() || war_machines_q.is_empty() {
         // TODO: should show battle report, before going straight to Herding
@@ -190,7 +190,10 @@ fn setup_level1(commands: &mut Commands, asset_server: &Res<AssetServer>) {
     commands
         .entity(war_machine)
         .insert(Speed(6.0))
-        .insert(Health(10.0))
+        .insert(Health {
+            current: 10.0,
+            max: 10.0,
+        })
         .insert(AttackValue(1.0))
         .insert(AttackRange(1.0))
         .insert(SpottingRange(1000.0))
@@ -198,29 +201,3 @@ fn setup_level1(commands: &mut Commands, asset_server: &Res<AssetServer>) {
 }
 
 fn setup_level2(commands: &mut Commands, asset_server: &Res<AssetServer>) {}
-
-fn new_war_machine(
-    commands: &mut Commands,
-    asset_server: &Res<AssetServer>,
-    transform: Transform,
-) -> Entity {
-    let mut transform = transform;
-    transform.rotation = Quat::IDENTITY;
-    commands
-        .spawn_bundle(SpriteBundle {
-            transform,
-            texture: asset_server.load("BaseSheep.png"),
-            sprite: Sprite {
-                color: Color::BLACK,
-                custom_size: Some(Vec2::splat(1.0)),
-                ..default()
-            },
-            ..default()
-        })
-        .insert(WarMachine)
-        .insert(Bounds {
-            x: (BATTLEFIELD_BOUNDS_X.x, BATTLEFIELD_BOUNDS_X.y),
-            y: (BATTLEFIELD_BOUNDS_Y.x, BATTLEFIELD_BOUNDS_Y.y),
-        })
-        .id()
-}

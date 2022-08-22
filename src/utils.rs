@@ -4,7 +4,10 @@ use bevy::prelude::*;
 pub struct Speed(pub f32);
 
 #[derive(Component)]
-pub struct Health(pub f32);
+pub struct Health {
+    pub current: f32,
+    pub max: f32,
+}
 
 #[derive(Component)]
 pub struct AttackValue(pub f32);

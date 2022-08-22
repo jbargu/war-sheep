@@ -11,6 +11,7 @@
 
 use bevy::prelude::*;
 use bevy::render::texture::ImageSettings;
+use bevy_simple_stat_bars::prelude::*;
 
 mod battle;
 mod debug;
@@ -73,6 +74,7 @@ fn main() {
         .add_plugin(sheep::SheepPlugin)
         .add_plugin(drag::DragPlugin)
         .add_plugin(battle::BattlePlugin)
+        .add_plugin(StatBarsPlugin)
         .add_startup_system(spawn_camera)
         .add_system_set(SystemSet::on_enter(GameState::Herding).with_system(spawn_farm_scene))
         .run();

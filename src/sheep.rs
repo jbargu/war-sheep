@@ -49,6 +49,8 @@ const SHEEP_ROT_AMPLITUDE_RAD: f32 = 10.0 * (std::f32::consts::PI / 180.0);
 const SHEEP_ROT_WAVELENGTH_SECS_INV: f32 = 8.0;
 const SHEEP_WOBBLE_DRAGGED_SECS_INV: f32 = 24.0;
 
+const SHEEP_DEFAULT_HEALTH: f32 = 20.0;
+
 #[derive(Component, Default)]
 pub struct Sheep {
     // In future we can put all the sheep traits here
@@ -151,7 +153,10 @@ fn spawn_sheep(
             y: (PEN_BOUNDS_Y.x, PEN_BOUNDS_Y.y),
         })
         .insert(Speed(SHEEP_WANDER_SPEED))
-        .insert(Health(1.0))
+        .insert(Health {
+            current: SHEEP_DEFAULT_HEALTH,
+            max: SHEEP_DEFAULT_HEALTH,
+        })
         .id();
 
     let head = commands

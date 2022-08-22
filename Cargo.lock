@@ -723,6 +723,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_simple_stat_bars"
+version = "0.2.0"
+source = "git+https://github.com/ickshonpe/bevy_simple_stat_bars?branch=main#8a5be570f939e1a829e0c2b69a45d72701bdb55c"
+dependencies = [
+ "bevy",
+ "copyless",
+]
+
+[[package]]
 name = "bevy_sprite"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3274,6 +3283,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy-inspector-egui",
+ "bevy_simple_stat_bars",
  "rand",
 ]
 
