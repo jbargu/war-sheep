@@ -13,13 +13,10 @@ impl Plugin for SheepPlugin {
         app.add_startup_system(init_sheep)
             // If you want the sheep to respawn after Battle, uncomment below, and comment above
             //app.add_system_set(SystemSet::on_enter(GameState::Herding).with_system(init_sheep))
-            .add_startup_system_to_stage(
-                StartupStage::PreStartup,
-                load_graphics, //.run_in_state(GameState::Herding),
-            )
+            .add_startup_system_to_stage(StartupStage::PreStartup, load_graphics)
             .add_system_to_stage(
                 CoreStage::PreUpdate,
-                grab_sheep, //.run_in_state(GameState::Herding),
+                grab_sheep.run_in_state(GameState::Herding),
             )
             .add_system_set(
                 ConditionSet::new()
@@ -36,7 +33,7 @@ impl Plugin for SheepPlugin {
             )
             .add_system_to_stage(
                 CoreStage::PostUpdate,
-                bounds_check, //.run_in_state(GameState::Herding),
+                bounds_check.run_in_state(GameState::Herding),
             );
     }
 }

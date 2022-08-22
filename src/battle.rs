@@ -24,14 +24,7 @@ pub struct BattlePlugin;
 
 impl Plugin for BattlePlugin {
     fn build(&self, app: &mut App) {
-        app.add_enter_system_set(
-            GameState::Battle,
-            ConditionSet::new()
-                .with_system(init_level)
-                .with_system(add_health_bars_to_sheep)
-                .into(),
-        )
-        .add_system_set(
+        app.add_system_set(
             ConditionSet::new()
                 .run_in_state(GameState::Battle)
                 .label("update")
@@ -48,6 +41,13 @@ impl Plugin for BattlePlugin {
                 .run_in_state(GameState::Battle)
                 .after("update")
                 .with_system(bounds_check)
+                .into(),
+        )
+        .add_enter_system_set(
+            GameState::Battle,
+            ConditionSet::new()
+                .with_system(init_level)
+                .with_system(add_health_bars_to_sheep)
                 .into(),
         )
         .add_exit_system_set(
