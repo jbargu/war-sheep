@@ -12,6 +12,7 @@
 use bevy::prelude::*;
 use bevy::render::texture::ImageSettings;
 use bevy_simple_stat_bars::prelude::*;
+use utils::{despawn_entities_with_component, UnloadOnExit};
 
 mod battle;
 mod debug;
@@ -77,6 +78,10 @@ fn main() {
         .add_plugin(StatBarsPlugin)
         .add_startup_system(spawn_camera)
         .add_system_set(SystemSet::on_enter(GameState::Herding).with_system(spawn_farm_scene))
+        .add_system_set(
+            SystemSet::on_exit(GameState::Herding)
+                .with_system(despawn_entities_with_component::<UnloadOnExit>),
+        )
         .run();
 }
 
@@ -95,7 +100,9 @@ fn spawn_farm_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
             },
             ..default()
         })
+        .insert(UnloadOnExit)
         .insert(Name::from("FarmBehind"));
+
     commands
         .spawn_bundle(SpriteBundle {
             texture: asset_server.load("SheepFarmInfront.png"),
@@ -109,6 +116,7 @@ fn spawn_farm_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
             },
             ..default()
         })
+        .insert(UnloadOnExit)
         .insert(Name::from("FarmFront"));
 }
 

@@ -29,6 +29,10 @@ pub struct Bounds {
     pub y: (f32, f32),
 }
 
+/// Components tagged with this will be despawn on the stage exit
+#[derive(Component)]
+pub struct UnloadOnExit;
+
 pub fn bounds_check(mut transforms: Query<(&mut Transform, &Bounds), Changed<Transform>>) {
     for (mut transform, bounds) in transforms.iter_mut() {
         if transform.translation.y > bounds.y.1 {
@@ -42,5 +46,15 @@ pub fn bounds_check(mut transforms: Query<(&mut Transform, &Bounds), Changed<Tra
         } else if transform.translation.x < bounds.x.0 {
             transform.translation.x = bounds.x.0
         }
+    }
+}
+
+/// Despawns the entities with given component
+pub fn despawn_entities_with_component<T: Component>(
+    mut commands: Commands,
+    q: Query<Entity, With<T>>,
+) {
+    for e in q.iter() {
+        commands.entity(e).despawn_recursive();
     }
 }

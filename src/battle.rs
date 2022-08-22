@@ -2,7 +2,8 @@ use bevy::prelude::*;
 
 use crate::sheep;
 use crate::utils::{
-    bounds_check, AttackRange, AttackValue, Health, PursuitType, Speed, SpottingRange,
+    bounds_check, despawn_entities_with_component, AttackRange, AttackValue, Health, PursuitType,
+    Speed, SpottingRange, UnloadOnExit,
 };
 use rand::{thread_rng, Rng};
 
@@ -42,7 +43,10 @@ impl Plugin for BattlePlugin {
                 .after("update")
                 .with_system(bounds_check),
         )
-        .add_system_set(SystemSet::on_exit(GameState::Battle).with_system(despawn_war_machines));
+        .add_system_set(
+            SystemSet::on_exit(GameState::Battle)
+                .with_system(despawn_entities_with_component::<UnloadOnExit>),
+        );
     }
 }
 
@@ -153,12 +157,6 @@ fn check_end_battle(
     }
 }
 
-fn despawn_war_machines(mut commands: Commands, war_machines_q: Query<Entity, With<WarMachine>>) {
-    for e in war_machines_q.iter() {
-        commands.entity(e).despawn_recursive();
-    }
-}
-
 fn setup_level1(commands: &mut Commands, asset_server: &Res<AssetServer>) {
     // Spawn red battlefield to distinguish from the pen
     // TODO: should be replaced with a proper asset
@@ -176,6 +174,7 @@ fn setup_level1(commands: &mut Commands, asset_server: &Res<AssetServer>) {
             },
             ..default()
         })
+        .insert(UnloadOnExit)
         .insert(Name::from("Battlefield"));
 
     // Spawn a single war machine

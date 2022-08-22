@@ -4,7 +4,7 @@ use super::{BATTLEFIELD_BOUNDS_X, BATTLEFIELD_BOUNDS_Y};
 
 use super::health_bars::create_war_machine_hp_bar;
 
-use crate::utils::Bounds;
+use crate::utils::{Bounds, UnloadOnExit};
 
 // Every WarMachine is defined by:
 // - `SpottingRange`: if a sheep is found within this radius, it will be pursued
@@ -36,6 +36,7 @@ pub fn new_war_machine(
             ..default()
         })
         .insert(WarMachine)
+        .insert(UnloadOnExit)
         .insert(Bounds {
             x: (BATTLEFIELD_BOUNDS_X.x, BATTLEFIELD_BOUNDS_X.y),
             y: (BATTLEFIELD_BOUNDS_Y.x, BATTLEFIELD_BOUNDS_Y.y),
