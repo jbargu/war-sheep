@@ -19,6 +19,7 @@ mod battle;
 mod debug;
 mod drag;
 mod sheep;
+mod ui;
 mod utils;
 
 const RESOLUTION: f32 = 16.0 / 9.0;
@@ -76,6 +77,7 @@ fn main() {
         .add_plugin(sheep::SheepPlugin)
         .add_plugin(drag::DragPlugin)
         .add_plugin(battle::BattlePlugin)
+        .add_plugin(ui::UiPlugin)
         .add_plugin(StatBarsPlugin)
         .add_startup_system(spawn_camera)
         .add_enter_system(GameState::Herding, spawn_farm_scene)
