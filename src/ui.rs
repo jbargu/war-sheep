@@ -14,6 +14,7 @@ fn test_text(mut commands: Commands, texture: Res<AsciiSheet>) {
         &mut commands,
         &texture,
         Vec2::ZERO.extend(50.0),
+        Color::WHITE,
         "test text ABC",
     );
 }
@@ -25,6 +26,7 @@ pub fn write_text(
     commands: &mut Commands,
     texture: &AsciiSheet,
     translation: Vec3,
+    color: Color,
     text: &str,
 ) -> Entity {
     let text_parent = commands
@@ -46,6 +48,7 @@ pub fn write_text(
                     ),
                     texture_atlas: texture.0.clone(),
                     sprite: TextureAtlasSprite {
+                        color,
                         index: c as usize,
                         custom_size: Some(Vec2::splat(LETTER_TILE_WIDTH) / 16.0),
                         ..default()
