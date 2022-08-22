@@ -134,8 +134,8 @@ fn spawn_sheep(
             transform,
             texture_atlas: texture.0.clone(),
             sprite: TextureAtlasSprite {
-                index: 0,
-                custom_size: Some(Vec2::new(1.0, 1.0)),
+                index: 1,
+                custom_size: Some(Vec2::new(20.0, 19.0) / 16.0),
                 ..default()
             },
             ..default()
@@ -169,8 +169,8 @@ fn spawn_sheep(
                 ..default()
             },
             sprite: TextureAtlasSprite {
-                index: 1,
-                custom_size: Some(Vec2::new(1.0, 1.0)),
+                index: 2,
+                custom_size: Some(Vec2::new(20.0, 19.0) / 16.0),
                 ..default()
             },
             ..default()
