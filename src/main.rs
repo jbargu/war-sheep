@@ -33,7 +33,6 @@ pub enum GameState {
 }
 
 trait ScreenToWorld {
-    // NOTE: if we end up using multiple screens, this will have to be adjusted
     fn screen_to_world(
         &self,
         windows: Res<Windows>,
@@ -42,6 +41,7 @@ trait ScreenToWorld {
 }
 
 impl ScreenToWorld for Vec2 {
+    // NOTE: if we end up using multiple screens, this will have to be adjusted
     fn screen_to_world(
         &self,
         windows: Res<Windows>,
