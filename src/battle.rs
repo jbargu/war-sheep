@@ -32,7 +32,6 @@ impl Plugin for BattlePlugin {
             SystemSet::on_update(GameState::Battle)
                 .with_system(move_and_attack)
                 .with_system(remove_dead_sheep)
-                .with_system(sheep::update_sheep)
                 .with_system(sheep::wander)
                 .with_system(sheep::wobble_sheep)
                 .with_system(sheep::update_sheep_ordering)
