@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use iyes_loopless::prelude::*;
 
 use rand::{thread_rng, Rng};
 
@@ -12,10 +13,17 @@ impl Plugin for SheepPlugin {
         app.add_startup_system(init_sheep)
             // If you want the sheep to respawn after Battle, uncomment below, and comment above
             //app.add_system_set(SystemSet::on_enter(GameState::Herding).with_system(init_sheep))
-            .add_startup_system_to_stage(StartupStage::PreStartup, load_graphics)
+            .add_startup_system_to_stage(
+                StartupStage::PreStartup,
+                load_graphics, //.run_in_state(GameState::Herding),
+            )
+            .add_system_to_stage(
+                CoreStage::PreUpdate,
+                grab_sheep, //.run_in_state(GameState::Herding),
+            )
             .add_system_set(
-                SystemSet::on_update(GameState::Herding)
-                    .label("update")
+                ConditionSet::new()
+                    .run_in_state(GameState::Herding)
                     .with_system(sheep_select)
                     .with_system(update_select_box)
                     .with_system(drop_sheep)
@@ -23,12 +31,13 @@ impl Plugin for SheepPlugin {
                     .with_system(wobble_sheep)
                     .with_system(shrink_sheep_on_drop)
                     .with_system(update_sheep_ordering)
-                    .with_system(keyboard_input),
+                    .with_system(keyboard_input)
+                    .into(),
             )
-            .add_system_to_stage(CoreStage::PreUpdate, grab_sheep)
-            // If we want to stop bounds checking, conditionally remove `Bounds` component rather
-            // than removing this system
-            .add_system_to_stage(CoreStage::PostUpdate, bounds_check);
+            .add_system_to_stage(
+                CoreStage::PostUpdate,
+                bounds_check, //.run_in_state(GameState::Herding),
+            );
     }
 }
 
@@ -486,9 +495,8 @@ fn load_graphics(
     commands.insert_resource(SheepSprites(atlas_handle));
 }
 
-fn keyboard_input(mut keys: ResMut<Input<KeyCode>>, mut game_state: ResMut<State<GameState>>) {
+fn keyboard_input(mut commands: Commands, keys: ResMut<Input<KeyCode>>) {
     if keys.just_released(KeyCode::Key1) {
-        game_state.set(GameState::Battle).unwrap();
-        keys.reset(KeyCode::Key1);
+        commands.insert_resource(NextState(GameState::Battle));
     }
 }

@@ -9,6 +9,7 @@ edition = "2021"
 bevy = { version = "0.8", features = ["dynamic"] }
 bevy-inspector-egui = "0.12" 
 bevy_simple_stat_bars = {git = "https://github.com/ickshonpe/bevy_simple_stat_bars", branch="main"}
+iyes_loopless = "0.7"
 rand = "0.8"
 
 ## Uncomment if game becomes too slow in debug mode ## 
