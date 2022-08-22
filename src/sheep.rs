@@ -28,10 +28,12 @@ impl Plugin for SheepPlugin {
             .add_system_set(
                 SystemSet::on_update(GameState::Herding)
                     .after("update")
-                    .with_system(bounds_check)
                     .with_system(update_sheep),
             )
-            .add_system_to_stage(CoreStage::PreUpdate, grab_sheep);
+            .add_system_to_stage(CoreStage::PreUpdate, grab_sheep)
+            // If we want to stop bounds checking, conditionally remove `Bounds` component rather
+            // than removing this system
+            .add_system_to_stage(CoreStage::PostUpdate, bounds_check);
     }
 }
 
