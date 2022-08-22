@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use iyes_loopless::prelude::*;
 
 use crate::sheep;
 use crate::utils::{
@@ -24,28 +25,36 @@ pub struct BattlePlugin;
 impl Plugin for BattlePlugin {
     fn build(&self, app: &mut App) {
         app.add_system_set(
-            SystemSet::on_enter(GameState::Battle)
-                .with_system(init_level)
-                .with_system(add_health_bars_to_sheep),
-        )
-        .add_system_set(
-            SystemSet::on_update(GameState::Battle)
+            ConditionSet::new()
+                .run_in_state(GameState::Battle)
+                .label("update")
                 .with_system(move_and_attack)
                 .with_system(remove_dead_sheep)
-                .with_system(sheep::update_sheep)
                 .with_system(sheep::wander)
                 .with_system(sheep::wobble_sheep)
                 .with_system(sheep::update_sheep_ordering)
-                .with_system(check_end_battle),
+                .with_system(check_end_battle)
+                .into(),
         )
         .add_system_set(
-            SystemSet::on_update(GameState::Battle)
+            ConditionSet::new()
+                .run_in_state(GameState::Battle)
                 .after("update")
-                .with_system(bounds_check),
+                .with_system(bounds_check)
+                .into(),
         )
-        .add_system_set(
-            SystemSet::on_exit(GameState::Battle)
-                .with_system(despawn_entities_with_component::<UnloadOnExit>),
+        .add_enter_system_set(
+            GameState::Battle,
+            ConditionSet::new()
+                .with_system(init_level)
+                .with_system(add_health_bars_to_sheep)
+                .into(),
+        )
+        .add_exit_system_set(
+            GameState::Battle,
+            ConditionSet::new()
+                .with_system(despawn_entities_with_component::<UnloadOnExit>)
+                .into(),
         );
     }
 }
@@ -140,15 +149,15 @@ fn remove_dead_sheep(
 }
 
 fn check_end_battle(
+    mut commands: Commands,
     sheep_q: Query<Entity, (With<sheep::Sheep>, Without<WarMachine>)>,
     war_machines_q: Query<Entity, (Without<sheep::Sheep>, With<WarMachine>)>,
-    mut game_state: ResMut<State<GameState>>,
     mut level: ResMut<Level>,
 ) {
     if sheep_q.is_empty() || war_machines_q.is_empty() {
         // TODO: should show battle report, before going straight to Herding
         // Should also add a timer to avoid long drawn battles
-        game_state.set(GameState::Herding).unwrap();
+        commands.insert_resource(NextState(GameState::Herding));
 
         // Increase level if all war machines are dead
         if war_machines_q.is_empty() {

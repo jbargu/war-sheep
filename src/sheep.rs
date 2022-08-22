@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use iyes_loopless::prelude::*;
 
 use rand::{thread_rng, Rng};
 
@@ -13,9 +14,13 @@ impl Plugin for SheepPlugin {
             // If you want the sheep to respawn after Battle, uncomment below, and comment above
             //app.add_system_set(SystemSet::on_enter(GameState::Herding).with_system(init_sheep))
             .add_startup_system_to_stage(StartupStage::PreStartup, load_graphics)
+            .add_system_to_stage(
+                CoreStage::PreUpdate,
+                grab_sheep.run_in_state(GameState::Herding),
+            )
             .add_system_set(
-                SystemSet::on_update(GameState::Herding)
-                    .label("update")
+                ConditionSet::new()
+                    .run_in_state(GameState::Herding)
                     .with_system(sheep_select)
                     .with_system(update_select_box)
                     .with_system(drop_sheep)
@@ -23,15 +28,13 @@ impl Plugin for SheepPlugin {
                     .with_system(wobble_sheep)
                     .with_system(shrink_sheep_on_drop)
                     .with_system(update_sheep_ordering)
-                    .with_system(keyboard_input),
+                    .with_system(keyboard_input)
+                    .into(),
             )
-            .add_system_set(
-                SystemSet::on_update(GameState::Herding)
-                    .after("update")
-                    .with_system(bounds_check)
-                    .with_system(update_sheep),
-            )
-            .add_system_to_stage(CoreStage::PreUpdate, grab_sheep);
+            .add_system_to_stage(
+                CoreStage::PostUpdate,
+                bounds_check.run_in_state(GameState::Herding),
+            );
     }
 }
 
@@ -51,11 +54,43 @@ const SHEEP_WOBBLE_DRAGGED_SECS_INV: f32 = 24.0;
 
 const SHEEP_DEFAULT_HEALTH: f32 = 20.0;
 
+#[derive(Copy, Clone)]
+struct SheepLevels {
+    base: usize,
+    spear: usize,
+    tank: usize,
+    medic: usize,
+}
+
+impl Default for SheepLevels {
+    fn default() -> Self {
+        Self {
+            base: 1,
+            spear: 0,
+            tank: 0,
+            medic: 0,
+        }
+    }
+}
+
+impl std::ops::Add<Self> for SheepLevels {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self {
+        Self {
+            base: self.base + rhs.base,
+            spear: self.spear + rhs.spear,
+            tank: self.tank + rhs.tank,
+            medic: self.medic + rhs.medic,
+        }
+    }
+}
+
 #[derive(Component, Default)]
 pub struct Sheep {
     // In future we can put all the sheep traits here
     col: f32,
-    speed_mod: f32,
+    levels: SheepLevels,
 }
 
 impl Sheep {
@@ -67,12 +102,7 @@ impl Sheep {
         let mut rng = thread_rng();
         Self {
             col: 0.1f32.max((self.col + other.col) / 2.0 + rng.gen_range(-0.1..=0.1)),
-            speed_mod: 0.0f32.max(
-                match rand::random() {
-                    true => self.speed_mod,
-                    false => other.speed_mod,
-                } + rng.gen_range(0.0..=0.2),
-            ),
+            levels: self.levels + other.levels,
         }
     }
 }
@@ -132,8 +162,9 @@ fn spawn_sheep(
             transform,
             texture_atlas: texture.0.clone(),
             sprite: TextureAtlasSprite {
-                index: 0,
-                custom_size: Some(Vec2::new(1.0, 1.0)),
+                index: 1,
+                custom_size: Some(Vec2::new(20.0, 19.0) / 16.0),
+                color: Color::WHITE * sheep.col,
                 ..default()
             },
             ..default()
@@ -167,8 +198,8 @@ fn spawn_sheep(
                 ..default()
             },
             sprite: TextureAtlasSprite {
-                index: 1,
-                custom_size: Some(Vec2::new(1.0, 1.0)),
+                index: 2,
+                custom_size: Some(Vec2::new(20.0, 19.0) / 16.0),
                 ..default()
             },
             ..default()
@@ -441,13 +472,6 @@ pub fn update_sheep_ordering(
     }
 }
 
-pub fn update_sheep(mut q: Query<(&mut TextureAtlasSprite, &mut Speed, &Sheep), Changed<Sheep>>) {
-    for (mut sprite, mut speed, sheep) in q.iter_mut() {
-        sprite.color = Color::WHITE * sheep.col;
-        speed.0 = 1.0 + sheep.speed_mod;
-    }
-}
-
 struct SheepSprites(Handle<TextureAtlas>);
 
 fn load_graphics(
@@ -458,8 +482,8 @@ fn load_graphics(
     let image = assets.load("BaseSheep.png");
     let atlas = TextureAtlas::from_grid_with_padding(
         image,
-        Vec2::new(16.0, 16.0),
-        2,
+        Vec2::new(20.0, 19.0),
+        5,
         1,
         Vec2::splat(2.0),
         Vec2::ZERO,
@@ -468,9 +492,8 @@ fn load_graphics(
     commands.insert_resource(SheepSprites(atlas_handle));
 }
 
-fn keyboard_input(mut keys: ResMut<Input<KeyCode>>, mut game_state: ResMut<State<GameState>>) {
+fn keyboard_input(mut commands: Commands, keys: ResMut<Input<KeyCode>>) {
     if keys.just_released(KeyCode::Key1) {
-        game_state.set(GameState::Battle).unwrap();
-        keys.reset(KeyCode::Key1);
+        commands.insert_resource(NextState(GameState::Battle));
     }
 }

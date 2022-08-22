@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use iyes_loopless::prelude::*;
 
 use crate::{GameState, ScreenToWorld};
 
@@ -23,6 +24,6 @@ pub struct DragPlugin;
 
 impl Plugin for DragPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system_set(SystemSet::on_update(GameState::Herding).with_system(drag));
+        app.add_system(drag.run_in_state(GameState::Herding));
     }
 }

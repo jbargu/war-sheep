@@ -12,12 +12,14 @@
 use bevy::prelude::*;
 use bevy::render::texture::ImageSettings;
 use bevy_simple_stat_bars::prelude::*;
+use iyes_loopless::prelude::*;
 use utils::{despawn_entities_with_component, UnloadOnExit};
 
 mod battle;
 mod debug;
 mod drag;
 mod sheep;
+mod ui;
 mod utils;
 
 const RESOLUTION: f32 = 16.0 / 9.0;
@@ -32,7 +34,6 @@ pub enum GameState {
 }
 
 trait ScreenToWorld {
-    // NOTE: if we end up using multiple screens, this will have to be adjusted
     fn screen_to_world(
         &self,
         windows: Res<Windows>,
@@ -41,6 +42,7 @@ trait ScreenToWorld {
 }
 
 impl ScreenToWorld for Vec2 {
+    // NOTE: if we end up using multiple screens, this will have to be adjusted
     fn screen_to_world(
         &self,
         windows: Res<Windows>,
@@ -69,18 +71,19 @@ fn main() {
             ..default()       // adjust later
         })
         .insert_resource(battle::Level(1))
-        .add_state(GameState::Herding)
+        .add_loopless_state(GameState::Herding)
         .add_plugins(DefaultPlugins)
         .add_plugin(debug::DebugPlugin)
         .add_plugin(sheep::SheepPlugin)
         .add_plugin(drag::DragPlugin)
         .add_plugin(battle::BattlePlugin)
+        .add_plugin(ui::UiPlugin)
         .add_plugin(StatBarsPlugin)
         .add_startup_system(spawn_camera)
-        .add_system_set(SystemSet::on_enter(GameState::Herding).with_system(spawn_farm_scene))
-        .add_system_set(
-            SystemSet::on_exit(GameState::Herding)
-                .with_system(despawn_entities_with_component::<UnloadOnExit>),
+        .add_enter_system(GameState::Herding, spawn_farm_scene)
+        .add_exit_system(
+            GameState::Herding,
+            despawn_entities_with_component::<UnloadOnExit>,
         )
         .run();
 }
