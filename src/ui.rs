@@ -1,25 +1,11 @@
 use bevy::prelude::*;
 
-use crate::utils::UnloadOnExit;
-
 pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system_to_stage(StartupStage::PreStartup, load_graphics)
-            .add_startup_system(test_text);
+        app.add_startup_system_to_stage(StartupStage::PreStartup, load_graphics);
     }
-}
-
-fn test_text(mut commands: Commands, texture: Res<AsciiSheet>) {
-    let id = write_text(
-        &mut commands,
-        &texture,
-        Vec2::ZERO.extend(50.0),
-        Color::WHITE,
-        "test text\nABC",
-    );
-    commands.entity(id).insert(UnloadOnExit);
 }
 
 const LETTER_TILE_WIDTH: f32 = 8.0;
@@ -86,11 +72,13 @@ fn load_graphics(
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
 ) {
     let image = assets.load("Ascii.png");
-    let atlas = TextureAtlas::from_grid(
+    let atlas = TextureAtlas::from_grid_with_padding(
         image,
         Vec2::new(LETTER_TILE_WIDTH, LETTER_TILE_WIDTH),
         16,
         16,
+        Vec2::splat(2.0),
+        Vec2::ZERO,
     );
     let atlas_handle = texture_atlases.add(atlas);
     commands.insert_resource(AsciiSheet(atlas_handle));

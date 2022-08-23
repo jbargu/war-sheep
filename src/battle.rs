@@ -237,7 +237,7 @@ fn setup_level1(commands: &mut Commands, asset_server: &Res<AssetServer>) {
         10.0,
     ));
 
-    let war_machine = new_war_machine(commands, &asset_server, transform);
+    let war_machine = new_war_machine(commands, asset_server, transform);
     commands
         .entity(war_machine)
         .insert(Speed(6.0))
@@ -251,4 +251,5 @@ fn setup_level1(commands: &mut Commands, asset_server: &Res<AssetServer>) {
         .insert(PursuitType::ChasingClosest);
 }
 
+#[allow(unused_variables)]
 fn setup_level2(commands: &mut Commands, asset_server: &Res<AssetServer>) {}
