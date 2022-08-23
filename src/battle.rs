@@ -8,6 +8,7 @@ use crate::utils::{
 };
 use rand::{thread_rng, Rng};
 
+use crate::ui::{write_text, AsciiSheet};
 use crate::GameState;
 use health_bars::create_sheep_hp_bar;
 use war_machines::{new_war_machine, WarMachine};
@@ -15,10 +16,19 @@ use war_machines::{new_war_machine, WarMachine};
 mod health_bars;
 mod war_machines;
 
+/// Resource for keeping battle timer, after it runs out, there is a tie
+pub struct BattleTimer(Timer);
+
+/// Marker component for the battle timer text
+#[derive(Component)]
+pub struct BattleTimerText;
+
 pub struct Level(pub usize);
 
 pub const BATTLEFIELD_BOUNDS_X: Vec2 = Vec2::new(-6.2, 6.2);
 pub const BATTLEFIELD_BOUNDS_Y: Vec2 = Vec2::new(-6.4, 7.0);
+
+pub const DEFAULT_ROUND_TIME: f32 = 3.0;
 
 pub struct BattlePlugin;
 
@@ -33,6 +43,7 @@ impl Plugin for BattlePlugin {
                 .with_system(sheep::wander)
                 .with_system(sheep::wobble_sheep)
                 .with_system(sheep::update_sheep_ordering)
+                .with_system(update_round_time)
                 .with_system(check_end_battle)
                 .into(),
         )
@@ -56,14 +67,6 @@ impl Plugin for BattlePlugin {
                 .with_system(despawn_entities_with_component::<UnloadOnExit>)
                 .into(),
         );
-    }
-}
-
-fn init_level(mut commands: Commands, level: Res<Level>, asset_server: Res<AssetServer>) {
-    match level.0 {
-        1 => setup_level1(&mut commands, &asset_server),
-        2 => setup_level2(&mut commands, &asset_server),
-        _ => panic!("This level does not exists!"),
     }
 }
 
@@ -148,21 +151,58 @@ fn remove_dead_sheep(
     }
 }
 
+/// Increases round time and renders it to screen
+fn update_round_time(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut round_time: ResMut<BattleTimer>,
+    ascii_sheet: Res<AsciiSheet>,
+    query: Query<Entity, With<BattleTimerText>>,
+) {
+    round_time.0.tick(time.delta());
+
+    // Remove old timer
+    query.for_each(|timer_text| commands.entity(timer_text).despawn_recursive());
+
+    let elapsed = round_time.0.duration().as_secs_f32() - round_time.0.elapsed_secs();
+    let round_timer = write_text(
+        &mut commands,
+        &ascii_sheet,
+        Vec2::new(-0.5, -3.8).extend(50.0),
+        Color::WHITE,
+        format!("{elapsed:.2}").as_str(),
+    );
+    commands
+        .entity(round_timer)
+        .insert(BattleTimerText)
+        .insert(UnloadOnExit);
+}
+
 fn check_end_battle(
     mut commands: Commands,
+    round_time: Res<BattleTimer>,
     sheep_q: Query<Entity, (With<sheep::Sheep>, Without<WarMachine>)>,
     war_machines_q: Query<Entity, (Without<sheep::Sheep>, With<WarMachine>)>,
     mut level: ResMut<Level>,
 ) {
-    if sheep_q.is_empty() || war_machines_q.is_empty() {
+    if round_time.0.just_finished() || sheep_q.is_empty() || war_machines_q.is_empty() {
         // TODO: should show battle report, before going straight to Herding
         // Should also add a timer to avoid long drawn battles
         commands.insert_resource(NextState(GameState::Herding));
+        commands.remove_resource::<BattleTimer>();
 
         // Increase level if all war machines are dead
         if war_machines_q.is_empty() {
             level.0 += 1;
         }
+    }
+}
+
+fn init_level(mut commands: Commands, level: Res<Level>, asset_server: Res<AssetServer>) {
+    match level.0 {
+        1 => setup_level1(&mut commands, &asset_server),
+        2 => setup_level2(&mut commands, &asset_server),
+        _ => panic!("This level does not exists!"),
     }
 }
 
@@ -173,6 +213,7 @@ fn setup_level1(commands: &mut Commands, asset_server: &Res<AssetServer>) {
         .spawn_bundle(SpriteBundle {
             texture: asset_server.load("SheepFarmBehind.png"),
             sprite: Sprite {
+                color: Color::ORANGE_RED,
                 custom_size: Some(Vec2::new(550.0, 300.0) / 16.0),
                 ..default()
             },
@@ -184,6 +225,9 @@ fn setup_level1(commands: &mut Commands, asset_server: &Res<AssetServer>) {
         })
         .insert(UnloadOnExit)
         .insert(Name::from("Battlefield"));
+
+    // Add round timer
+    commands.insert_resource(BattleTimer(Timer::from_seconds(DEFAULT_ROUND_TIME, false)));
 
     // Spawn a single war machine
     let mut rng = thread_rng();

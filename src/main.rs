@@ -24,6 +24,7 @@ mod utils;
 
 const RESOLUTION: f32 = 16.0 / 9.0;
 const WINDOW_HEIGHT: f32 = 900.0;
+const WINDOW_WIDTH: f32 = WINDOW_HEIGHT * RESOLUTION;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum GameState {
@@ -64,7 +65,7 @@ fn main() {
     App::new()
         .insert_resource(ImageSettings::default_nearest())
         .insert_resource(WindowDescriptor {
-            width: WINDOW_HEIGHT * RESOLUTION,
+            width: WINDOW_WIDTH,
             height: WINDOW_HEIGHT,
             title: "War Sheep".to_string(),
             resizable: false, // I am using tiling WM so this is just easier for time being, can

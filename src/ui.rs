@@ -1,5 +1,7 @@
 use bevy::prelude::*;
 
+use crate::utils::UnloadOnExit;
+
 pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
@@ -10,13 +12,14 @@ impl Plugin for UiPlugin {
 }
 
 fn test_text(mut commands: Commands, texture: Res<AsciiSheet>) {
-    write_text(
+    let id = write_text(
         &mut commands,
         &texture,
         Vec2::ZERO.extend(50.0),
         Color::WHITE,
         "test text\nABC",
     );
+    commands.entity(id).insert(UnloadOnExit);
 }
 
 const LETTER_TILE_WIDTH: f32 = 8.0;
