@@ -11,7 +11,7 @@ use rand::{thread_rng, Rng};
 use crate::ui::{write_text, AsciiSheet};
 use crate::GameState;
 use health_bars::create_sheep_hp_bar;
-use war_machines::{new_war_machine, WarMachine};
+use war_machines::{animate_war_machine, load_war_machine_graphics, new_war_machine, WarMachine};
 
 mod health_bars;
 mod war_machines;
@@ -28,45 +28,47 @@ pub struct Level(pub usize);
 pub const BATTLEFIELD_BOUNDS_X: Vec2 = Vec2::new(-6.2, 6.2);
 pub const BATTLEFIELD_BOUNDS_Y: Vec2 = Vec2::new(-6.4, 7.0);
 
-pub const DEFAULT_ROUND_TIME: f32 = 3.0;
+pub const DEFAULT_ROUND_TIME: f32 = 5.0;
 
 pub struct BattlePlugin;
 
 impl Plugin for BattlePlugin {
     fn build(&self, app: &mut App) {
-        app.add_system_set(
-            ConditionSet::new()
-                .run_in_state(GameState::Battle)
-                .label("update")
-                .with_system(move_and_attack)
-                .with_system(remove_dead_sheep)
-                .with_system(sheep::wander)
-                .with_system(sheep::wobble_sheep)
-                .with_system(sheep::update_sheep_ordering)
-                .with_system(update_round_time)
-                .with_system(check_end_battle)
-                .into(),
-        )
-        .add_system_set(
-            ConditionSet::new()
-                .run_in_state(GameState::Battle)
-                .after("update")
-                .with_system(bounds_check)
-                .into(),
-        )
-        .add_enter_system_set(
-            GameState::Battle,
-            ConditionSet::new()
-                .with_system(init_level)
-                .with_system(add_health_bars_to_sheep)
-                .into(),
-        )
-        .add_exit_system_set(
-            GameState::Battle,
-            ConditionSet::new()
-                .with_system(despawn_entities_with_component::<UnloadOnExit>)
-                .into(),
-        );
+        app.add_startup_system_to_stage(StartupStage::PreStartup, load_war_machine_graphics)
+            .add_system_set(
+                ConditionSet::new()
+                    .run_in_state(GameState::Battle)
+                    .label("update")
+                    .with_system(move_and_attack)
+                    .with_system(remove_dead_sheep)
+                    .with_system(sheep::wander)
+                    .with_system(sheep::wobble_sheep)
+                    .with_system(sheep::update_sheep_ordering)
+                    .with_system(update_round_time)
+                    .with_system(check_end_battle)
+                    .with_system(animate_war_machine)
+                    .into(),
+            )
+            .add_system_set(
+                ConditionSet::new()
+                    .run_in_state(GameState::Battle)
+                    .after("update")
+                    .with_system(bounds_check)
+                    .into(),
+            )
+            .add_enter_system_set(
+                GameState::Battle,
+                ConditionSet::new()
+                    .with_system(init_level)
+                    .with_system(add_health_bars_to_sheep)
+                    .into(),
+            )
+            .add_exit_system_set(
+                GameState::Battle,
+                ConditionSet::new()
+                    .with_system(despawn_entities_with_component::<UnloadOnExit>)
+                    .into(),
+            );
     }
 }
 
@@ -84,13 +86,21 @@ fn move_and_attack(
             &AttackRange,
             &AttackValue,
             &PursuitType,
+            &mut TextureAtlasSprite,
         ),
         (With<WarMachine>, Without<sheep::Sheep>),
     >,
     time: Res<Time>,
 ) {
-    for (speed, mut wm_transform, spotting_range, attack_range, attack_value, pursuit_type) in
-        war_machines_q.iter_mut()
+    for (
+        speed,
+        mut wm_transform,
+        spotting_range,
+        attack_range,
+        attack_value,
+        pursuit_type,
+        mut sprite,
+    ) in war_machines_q.iter_mut()
     {
         // Calculate the distance between the sheep and the current war machine
         let mut sheep = sheep_q
@@ -132,6 +142,8 @@ fn move_and_attack(
             match pursuit_type {
                 PursuitType::ChasingClosest => {
                     let direction = difference.normalize_or_zero();
+
+                    sprite.flip_x = direction.x <= 0.0;
                     wm_transform.translation +=
                         direction.extend(0.0) * speed.0 * time.delta_seconds();
                 }
@@ -198,15 +210,24 @@ fn check_end_battle(
     }
 }
 
-fn init_level(mut commands: Commands, level: Res<Level>, asset_server: Res<AssetServer>) {
+fn init_level(
+    mut commands: Commands,
+    level: Res<Level>,
+    asset_server: Res<AssetServer>,
+    robot_texture: Res<war_machines::RobotSprites>,
+) {
     match level.0 {
-        1 => setup_level1(&mut commands, &asset_server),
-        2 => setup_level2(&mut commands, &asset_server),
+        1 => setup_level1(&mut commands, &asset_server, &robot_texture),
+        2 => setup_level2(&mut commands, &asset_server, &robot_texture),
         _ => panic!("This level does not exists!"),
     }
 }
 
-fn setup_level1(commands: &mut Commands, asset_server: &Res<AssetServer>) {
+fn setup_level1(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+    robot_texture: &Res<war_machines::RobotSprites>,
+) {
     // Spawn red battlefield to distinguish from the pen
     // TODO: should be replaced with a proper asset
     commands
@@ -237,7 +258,7 @@ fn setup_level1(commands: &mut Commands, asset_server: &Res<AssetServer>) {
         10.0,
     ));
 
-    let war_machine = new_war_machine(commands, asset_server, transform);
+    let war_machine = new_war_machine(commands, &robot_texture, transform);
     commands
         .entity(war_machine)
         .insert(Speed(6.0))
@@ -252,4 +273,9 @@ fn setup_level1(commands: &mut Commands, asset_server: &Res<AssetServer>) {
 }
 
 #[allow(unused_variables)]
-fn setup_level2(commands: &mut Commands, asset_server: &Res<AssetServer>) {}
+fn setup_level2(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+    robot_texture: &Res<war_machines::RobotSprites>,
+) {
+}
