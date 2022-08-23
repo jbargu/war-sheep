@@ -4,37 +4,38 @@ use iyes_loopless::prelude::*;
 use rand::{thread_rng, Rng};
 
 use crate::utils::{bounds_check, Bounds, Health, Speed};
-use crate::{drag::Drag, GameState, ScreenToWorld};
+use crate::{drag::Drag, GameState, NewGame, ScreenToWorld};
 
 pub struct SheepPlugin;
 
 impl Plugin for SheepPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(init_sheep)
-            // If you want the sheep to respawn after Battle, uncomment below, and comment above
-            //app.add_system_set(SystemSet::on_enter(GameState::Herding).with_system(init_sheep))
-            .add_startup_system_to_stage(StartupStage::PreStartup, load_graphics)
-            .add_system_to_stage(
-                CoreStage::PreUpdate,
-                grab_sheep.run_in_state(GameState::Herding),
-            )
-            .add_system_set(
-                ConditionSet::new()
-                    .run_in_state(GameState::Herding)
-                    .with_system(sheep_select)
-                    .with_system(update_select_box)
-                    .with_system(drop_sheep)
-                    .with_system(wander)
-                    .with_system(wobble_sheep)
-                    .with_system(shrink_sheep_on_drop)
-                    .with_system(update_sheep_ordering)
-                    .with_system(keyboard_input)
-                    .into(),
-            )
-            .add_system_to_stage(
-                CoreStage::PostUpdate,
-                bounds_check.run_in_state(GameState::Herding),
-            );
+        app.add_enter_system(
+            GameState::Herding,
+            init_new_game.run_if_resource_exists::<NewGame>(),
+        )
+        .add_startup_system_to_stage(StartupStage::PreStartup, load_graphics)
+        .add_system_to_stage(
+            CoreStage::PreUpdate,
+            grab_sheep.run_in_state(GameState::Herding),
+        )
+        .add_system_set(
+            ConditionSet::new()
+                .run_in_state(GameState::Herding)
+                .with_system(sheep_select)
+                .with_system(update_select_box)
+                .with_system(drop_sheep)
+                .with_system(wander)
+                .with_system(wobble_sheep)
+                .with_system(shrink_sheep_on_drop)
+                .with_system(update_sheep_ordering)
+                .with_system(keyboard_input)
+                .into(),
+        )
+        .add_system_to_stage(
+            CoreStage::PostUpdate,
+            bounds_check.run_in_state(GameState::Herding),
+        );
     }
 }
 
@@ -214,7 +215,7 @@ fn spawn_sheep(
 #[derive(Component)]
 pub struct SheepParent;
 
-fn init_sheep(mut commands: Commands, texture: Res<SheepSprites>) {
+fn init_new_game(mut commands: Commands, texture: Res<SheepSprites>) {
     let mut rng = thread_rng();
 
     let mut sheep = Vec::with_capacity(COUNT_INIT_SHEEP);
@@ -251,6 +252,8 @@ fn init_sheep(mut commands: Commands, texture: Res<SheepSprites>) {
         .insert(SheepParent)
         .insert(Name::from("SheepParent"))
         .push_children(&sheep);
+
+    commands.remove_resource::<NewGame>();
 }
 
 fn grab_sheep(
@@ -492,8 +495,19 @@ fn load_graphics(
     commands.insert_resource(SheepSprites(atlas_handle));
 }
 
-fn keyboard_input(mut commands: Commands, keys: ResMut<Input<KeyCode>>) {
+fn keyboard_input(
+    mut commands: Commands,
+    keys: ResMut<Input<KeyCode>>,
+    sheep_q: Query<Entity, With<SheepParent>>,
+) {
     if keys.just_released(KeyCode::Key1) {
         commands.insert_resource(NextState(GameState::Battle));
+    }
+
+    // On `N` start a new game
+    if keys.just_released(KeyCode::N) {
+        sheep_q.for_each(|ent| commands.entity(ent).despawn_recursive());
+        commands.insert_resource(NewGame);
+        commands.insert_resource(NextState(GameState::Herding));
     }
 }

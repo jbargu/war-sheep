@@ -34,6 +34,8 @@ pub enum GameState {
     Paused,
 }
 
+pub struct NewGame;
+
 trait ScreenToWorld {
     fn screen_to_world(
         &self,
@@ -72,6 +74,7 @@ fn main() {
             ..default()       // adjust later
         })
         .insert_resource(battle::Level(1))
+        .insert_resource(NewGame)
         .add_loopless_state(GameState::Herding)
         .add_plugins(DefaultPlugins)
         .add_plugin(debug::DebugPlugin)
