@@ -23,6 +23,7 @@ pub struct BattleTimer(Timer);
 #[derive(Component)]
 pub struct BattleTimerText;
 
+#[derive(PartialEq)]
 pub struct Level(pub usize);
 
 pub const BATTLEFIELD_BOUNDS_X: Vec2 = Vec2::new(-6.2, 6.2);
@@ -59,7 +60,7 @@ impl Plugin for BattlePlugin {
             .add_enter_system_set(
                 GameState::Battle,
                 ConditionSet::new()
-                    .with_system(init_level)
+                    .with_system(setup_level1.run_if_resource_equals::<Level>(Level(1)))
                     .with_system(add_health_bars_to_sheep)
                     .into(),
             )
@@ -210,23 +211,10 @@ fn check_end_battle(
     }
 }
 
-fn init_level(
+fn setup_level1(
     mut commands: Commands,
-    level: Res<Level>,
     asset_server: Res<AssetServer>,
     robot_texture: Res<war_machines::RobotSprites>,
-) {
-    match level.0 {
-        1 => setup_level1(&mut commands, &asset_server, &robot_texture),
-        2 => setup_level2(&mut commands, &asset_server, &robot_texture),
-        _ => panic!("This level does not exists!"),
-    }
-}
-
-fn setup_level1(
-    commands: &mut Commands,
-    asset_server: &Res<AssetServer>,
-    robot_texture: &Res<war_machines::RobotSprites>,
 ) {
     // Spawn red battlefield to distinguish from the pen
     // TODO: should be replaced with a proper asset
@@ -258,7 +246,7 @@ fn setup_level1(
         10.0,
     ));
 
-    let war_machine = new_war_machine(commands, &robot_texture, transform);
+    let war_machine = new_war_machine(&mut commands, &robot_texture, transform);
     commands
         .entity(war_machine)
         .insert(Speed(6.0))
@@ -270,12 +258,4 @@ fn setup_level1(
         .insert(AttackRange(1.0))
         .insert(SpottingRange(1000.0))
         .insert(PursuitType::ChasingClosest);
-}
-
-#[allow(unused_variables)]
-fn setup_level2(
-    commands: &mut Commands,
-    asset_server: &Res<AssetServer>,
-    robot_texture: &Res<war_machines::RobotSprites>,
-) {
 }
