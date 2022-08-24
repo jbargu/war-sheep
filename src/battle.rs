@@ -3,8 +3,8 @@ use iyes_loopless::prelude::*;
 
 use crate::sheep;
 use crate::utils::{
-    bounds_check, despawn_entities_with_component, AttackRange, AttackValue, Health, PursuitType,
-    Speed, SpottingRange, UnloadOnExit,
+    bounds_check, despawn_entities_with_component, Attack, BehaviourType, Health, Speed,
+    UnloadOnExit,
 };
 use rand::{thread_rng, Rng};
 
@@ -83,26 +83,15 @@ fn move_and_attack(
         (
             &Speed,
             &mut Transform,
-            &SpottingRange,
-            &AttackRange,
-            &AttackValue,
-            &PursuitType,
+            &Attack,
+            &BehaviourType,
             &mut TextureAtlasSprite,
         ),
         (With<WarMachine>, Without<sheep::Sheep>),
     >,
     time: Res<Time>,
 ) {
-    for (
-        speed,
-        mut wm_transform,
-        spotting_range,
-        attack_range,
-        attack_value,
-        pursuit_type,
-        mut sprite,
-    ) in war_machines_q.iter_mut()
-    {
+    for (speed, mut wm_transform, attack, behaviour_type, mut sprite) in war_machines_q.iter_mut() {
         // Calculate the distance between the sheep and the current war machine
         let mut sheep = sheep_q
             .iter_mut()
@@ -111,7 +100,7 @@ fn move_and_attack(
                     .translation
                     .truncate()
                     .distance(sheep_transform.translation.truncate())
-                    <= spotting_range.0
+                    <= attack.spotting_range
             })
             .collect::<Vec<_>>();
 
@@ -135,13 +124,13 @@ fn move_and_attack(
                 sheep_transform.translation.truncate() - wm_transform.translation.truncate();
 
             // If the sheep is close enough, attack it
-            if difference.length() <= attack_range.0 {
-                sheep_health.current -= attack_value.0;
+            if difference.length() <= attack.attack_range {
+                sheep_health.current -= attack.attack_damage;
             }
 
-            // Move towards the sheep depending on the `pursuit_type`
-            match pursuit_type {
-                PursuitType::ChasingClosest => {
+            // Move towards the sheep depending on the `behaviour_type`
+            match behaviour_type {
+                BehaviourType::ChasingClosest => {
                     let direction = difference.normalize_or_zero();
 
                     sprite.flip_x = direction.x <= 0.0;
@@ -254,8 +243,10 @@ fn setup_level1(
             current: 10.0,
             max: 10.0,
         })
-        .insert(AttackValue(1.0))
-        .insert(AttackRange(1.0))
-        .insert(SpottingRange(1000.0))
-        .insert(PursuitType::ChasingClosest);
+        .insert(Attack {
+            attack_damage: 1.0,
+            attack_range: 1.0,
+            spotting_range: 1000.0,
+        })
+        .insert(BehaviourType::ChasingClosest);
 }

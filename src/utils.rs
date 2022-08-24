@@ -10,16 +10,14 @@ pub struct Health {
 }
 
 #[derive(Component)]
-pub struct AttackValue(pub f32);
+pub struct Attack {
+    pub attack_damage: f32,
+    pub attack_range: f32,
+    pub spotting_range: f32,
+}
 
 #[derive(Component)]
-pub struct AttackRange(pub f32);
-
-#[derive(Component)]
-pub struct SpottingRange(pub f32);
-
-#[derive(Component)]
-pub enum PursuitType {
+pub enum BehaviourType {
     ChasingClosest, // the entity will chase the closest enemy entity
 }
 
