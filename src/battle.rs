@@ -136,9 +136,12 @@ fn war_machine_move_and_attack(
                 BehaviourType::ChasingClosest => {
                     let direction = difference.normalize_or_zero();
 
-                    sprite.flip_x = direction.x <= 0.0;
-                    wm_transform.translation +=
-                        direction.extend(0.0) * speed.0 * time.delta_seconds();
+                    if difference.length() >= attack.attack_range * 0.5 {
+                        sprite.flip_x = direction.x <= 0.0;
+
+                        wm_transform.translation +=
+                            direction.extend(0.0) * speed.0 * time.delta_seconds();
+                    }
                 }
             }
         }
@@ -299,7 +302,7 @@ fn setup_level1(
     let war_machine = new_war_machine(&mut commands, &robot_texture, transform);
     commands
         .entity(war_machine)
-        .insert(Speed(6.0))
+        .insert(Speed(4.0))
         .insert(Health {
             current: 30.0,
             max: 30.0,
