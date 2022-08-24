@@ -10,7 +10,7 @@ use rand::{thread_rng, Rng};
 
 use crate::ui::{write_text, AsciiSheet};
 use crate::GameState;
-use health_bars::create_sheep_hp_bar;
+use health_bars::{create_sheep_hp_bar, update_health_bars};
 use war_machines::{animate_war_machine, load_war_machine_graphics, new_war_machine, WarMachine};
 
 mod health_bars;
@@ -42,6 +42,7 @@ impl Plugin for BattlePlugin {
                     .label("update")
                     .with_system(war_machine_move_and_attack)
                     .with_system(sheep_attack)
+                    .with_system(update_health_bars)
                     .with_system(remove_dead_sheep)
                     .with_system(remove_dead_war_machines)
                     .with_system(sheep::wander)
@@ -245,11 +246,10 @@ fn check_end_battle(
     battle_timer: Res<BattleTimer>,
     sheep_q: Query<Entity, (With<sheep::Sheep>, Without<WarMachine>)>,
     war_machines_q: Query<Entity, (Without<sheep::Sheep>, With<WarMachine>)>,
-    mut level: ResMut<Level>,
+    mut _level: ResMut<Level>,
 ) {
     if battle_timer.0.just_finished() || sheep_q.is_empty() || war_machines_q.is_empty() {
         // TODO: should show battle report, before going straight to Herding
-        // Should also add a timer to avoid long drawn battles
         commands.insert_resource(NextState(GameState::Herding));
         commands.remove_resource::<BattleTimer>();
 
