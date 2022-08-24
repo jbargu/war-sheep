@@ -3,7 +3,7 @@ use iyes_loopless::prelude::*;
 
 use rand::{thread_rng, Rng};
 
-use crate::utils::{bounds_check, Bounds, Health, Speed};
+use crate::utils::{bounds_check, Attack, Bounds, Health, Speed};
 use crate::{drag::Drag, GameState, NewGame, ScreenToWorld};
 
 pub struct SheepPlugin;
@@ -54,9 +54,14 @@ const SHEEP_ROT_WAVELENGTH_SECS_INV: f32 = 8.0;
 const SHEEP_WOBBLE_DRAGGED_SECS_INV: f32 = 24.0;
 
 const SHEEP_DEFAULT_HEALTH: f32 = 20.0;
+const SHEEP_DEFAULT_ATTACK: Attack = Attack {
+    attack_damage: 0.2,
+    attack_range: 1.0,
+    spotting_range: 100.0,
+};
 
 #[derive(Copy, Clone)]
-struct SheepLevels {
+pub struct SheepLevels {
     base: usize,
     spear: usize,
     tank: usize,
@@ -104,6 +109,22 @@ impl Sheep {
         Self {
             col: 0.1f32.max((self.col + other.col) / 2.0 + rng.gen_range(-0.1..=0.1)),
             levels: self.levels + other.levels,
+        }
+    }
+
+    /// TODO: Currently we sum all the levels times the SHEEP_DEFAULT_ATTACK to get the
+    /// `attack_damage`. Should probably be modified based on the different trait + combine RNG.
+    pub fn attack_multiplier(&self) -> usize {
+        self.levels.base + self.levels.spear + self.levels.tank + self.levels.medic
+    }
+
+    /// If this component is attached to the `sheep` entity, it will attack the nearest war
+    /// machine.
+    pub fn attack_component(&self) -> Attack {
+        Attack {
+            attack_damage: SHEEP_DEFAULT_ATTACK.attack_damage * self.attack_multiplier() as f32,
+            attack_range: SHEEP_DEFAULT_ATTACK.attack_range,
+            spotting_range: SHEEP_DEFAULT_ATTACK.spotting_range,
         }
     }
 }
@@ -158,6 +179,8 @@ fn spawn_sheep(
 ) -> Entity {
     let mut transform = transform;
     transform.rotation = Quat::IDENTITY;
+
+    let attack = sheep.attack_component();
     let sheep = commands
         .spawn_bundle(SpriteSheetBundle {
             transform,
@@ -189,6 +212,7 @@ fn spawn_sheep(
             current: SHEEP_DEFAULT_HEALTH,
             max: SHEEP_DEFAULT_HEALTH,
         })
+        .insert(attack)
         .id();
 
     let head = commands

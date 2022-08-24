@@ -40,8 +40,10 @@ impl Plugin for BattlePlugin {
                 ConditionSet::new()
                     .run_in_state(GameState::Battle)
                     .label("update")
-                    .with_system(move_and_attack)
+                    .with_system(war_machine_move_and_attack)
+                    .with_system(sheep_attack)
                     .with_system(remove_dead_sheep)
+                    .with_system(remove_dead_war_machines)
                     .with_system(sheep::wander)
                     .with_system(sheep::wobble_sheep)
                     .with_system(sheep::update_sheep_ordering)
@@ -77,7 +79,7 @@ fn add_health_bars_to_sheep(mut commands: Commands, sheep_q: Query<Entity, With<
     sheep_q.for_each(|sheep| create_sheep_hp_bar(sheep, &mut commands));
 }
 
-fn move_and_attack(
+fn war_machine_move_and_attack(
     mut sheep_q: Query<(&mut Health, &mut Transform), (With<sheep::Sheep>, Without<WarMachine>)>,
     mut war_machines_q: Query<
         (
@@ -142,6 +144,53 @@ fn move_and_attack(
     }
 }
 
+fn sheep_attack(
+    mut sheep_q: Query<(&mut Transform, &Attack), (With<sheep::Sheep>, Without<WarMachine>)>,
+    mut war_machines_q: Query<
+        (&mut Health, &mut Transform),
+        (With<WarMachine>, Without<sheep::Sheep>),
+    >,
+) {
+    for (sheep_transform, sheep_attack) in sheep_q.iter_mut() {
+        // Calculate the distance between the sheep and the current war machine
+        let mut war_machines = war_machines_q
+            .iter_mut()
+            .filter(|(_, wm_transform)| {
+                sheep_transform
+                    .translation
+                    .truncate()
+                    .distance(wm_transform.translation.truncate())
+                    <= sheep_attack.spotting_range
+            })
+            .collect::<Vec<_>>();
+
+        war_machines.sort_by(|(_, transform1), (_, transform2)| {
+            sheep_transform
+                .translation
+                .truncate()
+                .distance(transform1.translation.truncate())
+                .partial_cmp(
+                    &sheep_transform
+                        .translation
+                        .truncate()
+                        .distance(transform2.translation.truncate()),
+                )
+                .unwrap()
+        });
+
+        // Find the closest war machine
+        if let Some((ref mut wm_health, wm_transform)) = war_machines.get_mut(0) {
+            let difference =
+                wm_transform.translation.truncate() - sheep_transform.translation.truncate();
+
+            // If the sheep is close enough, sheep_attack it
+            if difference.length() <= sheep_attack.attack_range {
+                wm_health.current -= sheep_attack.attack_damage;
+            }
+        }
+    }
+}
+
 fn remove_dead_sheep(
     mut commands: Commands,
     sheep_q: Query<(Entity, &mut Health), (With<sheep::Sheep>, Changed<Health>)>,
@@ -149,6 +198,17 @@ fn remove_dead_sheep(
     for (sheep, health) in sheep_q.iter() {
         if health.current <= 0.0 {
             commands.entity(sheep).despawn_recursive();
+        }
+    }
+}
+
+fn remove_dead_war_machines(
+    mut commands: Commands,
+    war_machines_q: Query<(Entity, &mut Health), (With<WarMachine>, Changed<Health>)>,
+) {
+    for (war_machine, health) in war_machines_q.iter() {
+        if health.current <= 0.0 {
+            commands.entity(war_machine).despawn_recursive();
         }
     }
 }
@@ -240,8 +300,8 @@ fn setup_level1(
         .entity(war_machine)
         .insert(Speed(6.0))
         .insert(Health {
-            current: 10.0,
-            max: 10.0,
+            current: 30.0,
+            max: 30.0,
         })
         .insert(Attack {
             attack_damage: 1.0,
