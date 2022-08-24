@@ -48,7 +48,6 @@ impl Plugin for BattlePlugin {
                     .with_system(sheep::wobble_sheep)
                     .with_system(sheep::update_sheep_ordering)
                     .with_system(update_round_time)
-                    .with_system(check_end_battle)
                     .with_system(animate_war_machine)
                     .into(),
             )
@@ -57,6 +56,7 @@ impl Plugin for BattlePlugin {
                     .run_in_state(GameState::Battle)
                     .after("update")
                     .with_system(bounds_check)
+                    .with_system(check_end_battle)
                     .into(),
             )
             .add_enter_system_set(
@@ -217,16 +217,16 @@ fn remove_dead_war_machines(
 fn update_round_time(
     mut commands: Commands,
     time: Res<Time>,
-    mut round_time: ResMut<BattleTimer>,
+    mut battle_timer: ResMut<BattleTimer>,
     ascii_sheet: Res<AsciiSheet>,
     query: Query<Entity, With<BattleTimerText>>,
 ) {
-    round_time.0.tick(time.delta());
+    battle_timer.0.tick(time.delta());
 
     // Remove old timer
     query.for_each(|timer_text| commands.entity(timer_text).despawn_recursive());
 
-    let elapsed = round_time.0.duration().as_secs_f32() - round_time.0.elapsed_secs();
+    let elapsed = battle_timer.0.duration().as_secs_f32() - battle_timer.0.elapsed_secs();
     let round_timer = write_text(
         &mut commands,
         &ascii_sheet,
@@ -242,21 +242,22 @@ fn update_round_time(
 
 fn check_end_battle(
     mut commands: Commands,
-    round_time: Res<BattleTimer>,
+    battle_timer: Res<BattleTimer>,
     sheep_q: Query<Entity, (With<sheep::Sheep>, Without<WarMachine>)>,
     war_machines_q: Query<Entity, (Without<sheep::Sheep>, With<WarMachine>)>,
     mut level: ResMut<Level>,
 ) {
-    if round_time.0.just_finished() || sheep_q.is_empty() || war_machines_q.is_empty() {
+    if battle_timer.0.just_finished() || sheep_q.is_empty() || war_machines_q.is_empty() {
         // TODO: should show battle report, before going straight to Herding
         // Should also add a timer to avoid long drawn battles
         commands.insert_resource(NextState(GameState::Herding));
         commands.remove_resource::<BattleTimer>();
 
         // Increase level if all war machines are dead
-        if war_machines_q.is_empty() {
-            level.0 += 1;
-        }
+        // Currently commented, not all levels are defined
+        //if war_machines_q.is_empty() {
+        //level.0 += 1;
+        //}
     }
 }
 
