@@ -16,6 +16,7 @@ use iyes_loopless::prelude::*;
 use utils::{despawn_entities_with_component, UnloadOnExit};
 
 mod battle;
+mod battle_report;
 mod debug;
 mod drag;
 mod sheep;
@@ -31,6 +32,7 @@ pub enum GameState {
     MainMenu,
     Herding,
     Battle,
+    BattleReport,
     Paused,
 }
 
@@ -81,6 +83,7 @@ fn main() {
         .add_plugin(sheep::SheepPlugin)
         .add_plugin(drag::DragPlugin)
         .add_plugin(battle::BattlePlugin)
+        .add_plugin(battle_report::BattleReportPlugin)
         .add_plugin(ui::UiPlugin)
         .add_plugin(StatBarsPlugin)
         .add_startup_system(spawn_camera)

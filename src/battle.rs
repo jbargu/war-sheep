@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use iyes_loopless::prelude::*;
 
+use crate::battle_report::{self, BattleResult, BattleStatus};
 use crate::sheep;
 use crate::utils::{
     bounds_check, despawn_entities_with_component, Attack, BehaviourType, Health, Speed,
@@ -48,7 +49,7 @@ impl Plugin for BattlePlugin {
                     .with_system(sheep::wander)
                     .with_system(sheep::wobble_sheep)
                     .with_system(sheep::update_sheep_ordering)
-                    .with_system(update_round_time)
+                    .with_system(update_battle_timer)
                     .with_system(animate_war_machine)
                     .into(),
             )
@@ -217,8 +218,8 @@ fn remove_dead_war_machines(
     }
 }
 
-/// Increases round time and renders it to screen
-fn update_round_time(
+/// Increases battler timer and renders it to screen
+fn update_battle_timer(
     mut commands: Commands,
     time: Res<Time>,
     mut battle_timer: ResMut<BattleTimer>,
@@ -231,7 +232,7 @@ fn update_round_time(
     query.for_each(|timer_text| commands.entity(timer_text).despawn_recursive());
 
     let elapsed = battle_timer.0.duration().as_secs_f32() - battle_timer.0.elapsed_secs();
-    let round_timer = write_text(
+    let battle_timer = write_text(
         &mut commands,
         &ascii_sheet,
         Vec2::new(-0.5, -3.8).extend(50.0),
@@ -239,13 +240,14 @@ fn update_round_time(
         format!("{elapsed:.2}").as_str(),
     );
     commands
-        .entity(round_timer)
+        .entity(battle_timer)
         .insert(BattleTimerText)
         .insert(UnloadOnExit);
 }
 
 fn check_end_battle(
     mut commands: Commands,
+    mut battle_result: ResMut<BattleResult>,
     battle_timer: Res<BattleTimer>,
     sheep_q: Query<Entity, (With<sheep::Sheep>, Without<WarMachine>)>,
     war_machines_q: Query<Entity, (Without<sheep::Sheep>, With<WarMachine>)>,
@@ -253,8 +255,16 @@ fn check_end_battle(
 ) {
     if battle_timer.0.just_finished() || sheep_q.is_empty() || war_machines_q.is_empty() {
         // TODO: should show battle report, before going straight to Herding
-        commands.insert_resource(NextState(GameState::Herding));
+        commands.insert_resource(NextState(GameState::BattleReport));
         commands.remove_resource::<BattleTimer>();
+
+        if war_machines_q.is_empty() {
+            battle_result.battle_status = BattleStatus::Victory;
+        } else if sheep_q.is_empty() {
+            battle_result.battle_status = BattleStatus::GameOver;
+        } else {
+            battle_result.battle_status = BattleStatus::Draw;
+        }
 
         // Increase level if all war machines are dead
         // Currently commented, not all levels are defined
@@ -290,6 +300,10 @@ fn setup_level1(
 
     // Add round timer
     commands.insert_resource(BattleTimer(Timer::from_seconds(DEFAULT_ROUND_TIME, false)));
+    commands.insert_resource(BattleResult {
+        level_reward_sheep_gained: 5,
+        ..default()
+    });
 
     // Spawn a single war machine
     let mut rng = thread_rng();

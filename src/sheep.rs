@@ -1,3 +1,4 @@
+use crate::battle_report::LevelReward;
 use bevy::prelude::*;
 use iyes_loopless::prelude::*;
 
@@ -10,9 +11,12 @@ pub struct SheepPlugin;
 
 impl Plugin for SheepPlugin {
     fn build(&self, app: &mut App) {
-        app.add_enter_system(
+        app.add_enter_system_set(
             GameState::Herding,
-            init_new_game.run_if_resource_exists::<NewGame>(),
+            ConditionSet::new()
+                .with_system(init_new_game.run_if_resource_exists::<NewGame>())
+                .with_system(add_level_reward_sheep.run_if_resource_exists::<LevelReward>())
+                .into(),
         )
         .add_startup_system_to_stage(StartupStage::PreStartup, load_graphics)
         .add_system_to_stage(
@@ -240,12 +244,40 @@ fn spawn_sheep(
 pub struct SheepParent;
 
 fn init_new_game(mut commands: Commands, texture: Res<SheepSprites>) {
+    let sheep = spawn_n_sheep(&mut commands, texture, COUNT_INIT_SHEEP);
+
+    commands
+        .spawn_bundle(SpatialBundle::default())
+        .insert(SheepParent)
+        .insert(Name::from("SheepParent"))
+        .push_children(&sheep);
+
+    commands.remove_resource::<NewGame>();
+}
+
+fn add_level_reward_sheep(
+    mut commands: Commands,
+    texture: Res<SheepSprites>,
+    level_reward: Res<LevelReward>,
+    sheep_parent: Query<Entity, With<SheepParent>>,
+) {
+    let sheep = spawn_n_sheep(&mut commands, texture, level_reward.0);
+
+    commands.entity(sheep_parent.single()).push_children(&sheep);
+    commands.remove_resource::<LevelReward>();
+}
+
+fn spawn_n_sheep(
+    commands: &mut Commands,
+    texture: Res<SheepSprites>,
+    num_sheep: usize,
+) -> Vec<Entity> {
     let mut rng = thread_rng();
 
-    let mut sheep = Vec::with_capacity(COUNT_INIT_SHEEP);
-    for i in 0..COUNT_INIT_SHEEP {
+    let mut sheep = Vec::with_capacity(num_sheep);
+    for i in 0..num_sheep {
         let new_sheep = spawn_sheep(
-            &mut commands,
+            commands,
             &texture,
             Transform {
                 translation: Vec3::new(
@@ -271,13 +303,7 @@ fn init_new_game(mut commands: Commands, texture: Res<SheepSprites>) {
         );
     }
 
-    commands
-        .spawn_bundle(SpatialBundle::default())
-        .insert(SheepParent)
-        .insert(Name::from("SheepParent"))
-        .push_children(&sheep);
-
-    commands.remove_resource::<NewGame>();
+    sheep
 }
 
 fn grab_sheep(
