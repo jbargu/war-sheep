@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use iyes_loopless::prelude::*;
 
-use crate::battle_report::{self, BattleResult, BattleStatus};
+use crate::battle_report::{BattleResult, BattleStatus};
 use crate::sheep;
 use crate::utils::{
     bounds_check, despawn_entities_with_component, Attack, BehaviourType, Health, Speed,
