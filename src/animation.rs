@@ -21,7 +21,7 @@ impl Plugin for AnimationPlugin {
 pub struct Animation {
     animations: HashMap<String, Sheet>,
     pub current_animation: Option<String>,
-    current_frame: usize,
+    pub current_frame: usize,
     pub timer: Timer,
     pub flip_x: bool,
     pub played_once: bool,

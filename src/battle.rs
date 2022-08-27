@@ -31,7 +31,7 @@ pub struct Level(pub usize);
 pub const BATTLEFIELD_BOUNDS_X: Vec2 = Vec2::new(-6.2, 6.2);
 pub const BATTLEFIELD_BOUNDS_Y: Vec2 = Vec2::new(-6.4, 7.0);
 
-pub const DEFAULT_ROUND_TIME: f32 = 5.0;
+pub const DEFAULT_ROUND_TIME: f32 = 10.0;
 
 pub struct BattlePlugin;
 
@@ -248,8 +248,8 @@ fn setup_level1(
         .entity(war_machine)
         .insert(Speed(4.0))
         .insert(Health {
-            current: 30.0,
-            max: 30.0,
+            current: 60.0,
+            max: 60.0,
         })
         .insert(Attack {
             attack_damage: 10.0,

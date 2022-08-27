@@ -82,7 +82,7 @@ pub fn load_war_machine_graphics(
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
 ) {
     let mut animations_map: HashMap<String, Sheet> = HashMap::new();
-    let texture_handle = asset_server.load("robot_tileset.png");
+    let texture_handle = asset_server.load("EatingRobot.png");
 
     // Add idling animation
     let texture_atlas = TextureAtlas::from_grid_with_padding(
@@ -91,7 +91,7 @@ pub fn load_war_machine_graphics(
         4,
         1,
         Vec2::ZERO,
-        Vec2::new(208.0, 80.0),
+        Vec2::new(0.0, 0.0),
     );
 
     let len = texture_atlas.len();
@@ -111,7 +111,7 @@ pub fn load_war_machine_graphics(
         7,
         1,
         Vec2::ZERO,
-        Vec2::new(288.0, 80.0),
+        Vec2::new(0.0, 32.0),
     );
 
     let len = texture_atlas.len();
@@ -128,15 +128,35 @@ pub fn load_war_machine_graphics(
     let texture_atlas = TextureAtlas::from_grid_with_padding(
         texture_handle.clone(),
         Vec2::new(16.0, 32.0),
-        7,
+        4,
         1,
         Vec2::ZERO,
-        Vec2::new(288.0, 144.0),
+        Vec2::new(0.0, 64.0),
     );
 
     let len = texture_atlas.len();
     animations_map.insert(
         Attacking::ANIMATION.to_owned(),
+        Sheet {
+            atlas_handle: texture_atlases.add(texture_atlas),
+            length: len,
+            repeating: true,
+        },
+    );
+
+    // Add dying animation
+    let texture_atlas = TextureAtlas::from_grid_with_padding(
+        texture_handle.clone(),
+        Vec2::new(16.0, 32.0),
+        4,
+        1,
+        Vec2::ZERO,
+        Vec2::new(0.0, 96.0),
+    );
+
+    let len = texture_atlas.len();
+    animations_map.insert(
+        Dying::ANIMATION.to_owned(),
         Sheet {
             atlas_handle: texture_atlases.add(texture_atlas),
             length: len,
