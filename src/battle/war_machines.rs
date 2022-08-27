@@ -246,7 +246,7 @@ fn walking(
             // If the sheep is within attack_range, transition into Attacking state
             if difference.length() <= attack.attack_range {
                 commands.entity(wm_entity).remove::<Walking>();
-                commands.entity(wm_entity).insert(Attacking);
+                commands.entity(wm_entity).insert(Attacking::default());
                 continue;
             }
 
@@ -271,57 +271,70 @@ fn attacking(
     mut commands: Commands,
     mut sheep_q: Query<(&mut Health, &mut Transform), (With<Sheep>, Without<WarMachine>)>,
     mut war_machines_q: Query<
-        (Entity, &mut Transform, &Attack, &mut Animation),
+        (
+            Entity,
+            &mut Transform,
+            &Attack,
+            &mut Animation,
+            &mut Attacking,
+        ),
         (With<Attacking>, With<WarMachine>, Without<Sheep>),
     >,
 ) {
-    for (wm_entity, wm_transform, attack, mut animation) in war_machines_q.iter_mut() {
-        // Start animation if we have not yet
-        if animation.current_animation.as_deref() != Some(Attacking::ANIMATION) {
-            animation.play(Attacking::ANIMATION, true)
-        }
+    for (wm_entity, wm_transform, attack, mut animation, mut attacking) in war_machines_q.iter_mut()
+    {
+        if !attacking.has_started {
+            attacking.has_started = true;
 
-        // Check whether any sheep are within attack range
-        let mut sheep = sheep_q
-            .iter_mut()
-            .filter(|(_, sheep_transform)| {
+            animation.play(Attacking::ANIMATION, false);
+
+            // Check whether any sheep are within attack range
+            let mut sheep = sheep_q
+                .iter_mut()
+                .filter(|(_, sheep_transform)| {
+                    wm_transform
+                        .translation
+                        .truncate()
+                        .distance(sheep_transform.translation.truncate())
+                        <= attack.attack_range
+                })
+                .collect::<Vec<_>>();
+
+            // Transition to Idling if no sheep are found
+            if sheep.is_empty() {
+                commands.entity(wm_entity).remove::<Attacking>();
+                commands.entity(wm_entity).insert(Idling);
+                continue;
+            }
+
+            // Otherwise sort sheep to find the closest one to attack
+            sheep.sort_by(|(_, transform1), (_, transform2)| {
                 wm_transform
                     .translation
                     .truncate()
-                    .distance(sheep_transform.translation.truncate())
-                    <= attack.attack_range
-            })
-            .collect::<Vec<_>>();
+                    .distance(transform1.translation.truncate())
+                    .partial_cmp(
+                        &wm_transform
+                            .translation
+                            .truncate()
+                            .distance(transform2.translation.truncate()),
+                    )
+                    .unwrap()
+            });
 
-        // Transition to Walking if no sheep are found
-        if sheep.is_empty() {
-            commands.entity(wm_entity).remove::<Attacking>();
-            commands.entity(wm_entity).insert(Walking);
-            continue;
+            // Attack the sheep
+            if let Some((ref mut sheep_health, sheep_transform)) = sheep.get_mut(0) {
+                let difference =
+                    sheep_transform.translation.truncate() - wm_transform.translation.truncate();
+
+                animation.flip_x = difference.normalize_or_zero().x <= 0.0;
+                sheep_health.current -= attack.attack_damage;
+            }
         }
 
-        // Otherwise sort sheep to find the closest one to attack
-        sheep.sort_by(|(_, transform1), (_, transform2)| {
-            wm_transform
-                .translation
-                .truncate()
-                .distance(transform1.translation.truncate())
-                .partial_cmp(
-                    &wm_transform
-                        .translation
-                        .truncate()
-                        .distance(transform2.translation.truncate()),
-                )
-                .unwrap()
-        });
-
-        // Attack the sheep
-        if let Some((ref mut sheep_health, sheep_transform)) = sheep.get_mut(0) {
-            let difference =
-                sheep_transform.translation.truncate() - wm_transform.translation.truncate();
-
-            animation.flip_x = difference.normalize_or_zero().x <= 0.0;
-            sheep_health.current -= attack.attack_damage;
+        if animation.has_finished() {
+            commands.entity(wm_entity).remove::<Attacking>();
+            commands.entity(wm_entity).insert(Idling);
         }
     }
 }

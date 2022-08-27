@@ -252,7 +252,7 @@ fn setup_level1(
             max: 30.0,
         })
         .insert(Attack {
-            attack_damage: 1.0,
+            attack_damage: 10.0,
             attack_range: 1.0,
             spotting_range: 1000.0,
         })

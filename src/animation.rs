@@ -24,6 +24,7 @@ pub struct Animation {
     current_frame: usize,
     pub timer: Timer,
     pub flip_x: bool,
+    pub played_once: bool,
 }
 
 #[derive(Clone)]
@@ -41,6 +42,7 @@ impl Animation {
             current_frame: 0,
             timer: Timer::from_seconds(duration, false),
             flip_x: false,
+            played_once: false,
         }
     }
 
@@ -48,6 +50,7 @@ impl Animation {
         self.current_animation = Some(name.to_owned());
         self.current_frame = 0;
         self.flip_x = false;
+        self.played_once = false;
         self.timer.reset();
         self.timer.unpause();
         self.timer.set_repeating(repeating);
@@ -70,6 +73,10 @@ impl Animation {
         }
         false
     }
+
+    pub fn has_finished(&self) -> bool {
+        self.played_once
+    }
 }
 
 /// Cycles all animations
@@ -88,6 +95,7 @@ pub fn animate(
             animation.timer.reset();
 
             if animation.is_last_frame() {
+                animation.played_once = true;
                 if animation.is_repeating() {
                     animation.current_frame = 0;
                 }

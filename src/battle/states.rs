@@ -14,8 +14,10 @@ impl Walking {
     pub const ANIMATION: &'static str = "walking";
 }
 
-#[derive(Component)]
-pub struct Attacking;
+#[derive(Component, Default)]
+pub struct Attacking {
+    pub has_started: bool,
+}
 
 impl Attacking {
     pub const ANIMATION: &'static str = "attacking";
