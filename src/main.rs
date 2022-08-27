@@ -15,6 +15,7 @@ use bevy_simple_stat_bars::prelude::*;
 use iyes_loopless::prelude::*;
 use utils::{despawn_entities_with_component, UnloadOnExit};
 
+mod animation;
 mod battle;
 mod battle_report;
 mod debug;
@@ -79,6 +80,8 @@ fn main() {
         .insert_resource(NewGame)
         .add_loopless_state(GameState::Herding)
         .add_plugins(DefaultPlugins)
+        .add_plugin(animation::AnimationPlugin)
+        .add_plugin(battle::war_machines::WarMachinePlugin)
         .add_plugin(debug::DebugPlugin)
         .add_plugin(sheep::SheepPlugin)
         .add_plugin(drag::DragPlugin)

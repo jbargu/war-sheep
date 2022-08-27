@@ -12,10 +12,11 @@ use rand::{thread_rng, Rng};
 use crate::ui::{write_text, AsciiSheet};
 use crate::GameState;
 use health_bars::{create_sheep_hp_bar, update_health_bars};
-use war_machines::{animate_war_machine, load_war_machine_graphics, new_war_machine, WarMachine};
+use war_machines::{new_war_machine, WarMachine};
 
 mod health_bars;
-mod war_machines;
+mod states;
+pub mod war_machines;
 
 /// Resource for keeping battle timer, after it runs out, there is a tie
 pub struct BattleTimer(Timer);
@@ -36,44 +37,42 @@ pub struct BattlePlugin;
 
 impl Plugin for BattlePlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system_to_stage(StartupStage::PreStartup, load_war_machine_graphics)
-            .add_system_set(
-                ConditionSet::new()
-                    .run_in_state(GameState::Battle)
-                    .label("update")
-                    .with_system(war_machine_move_and_attack)
-                    .with_system(sheep_attack)
-                    .with_system(update_health_bars)
-                    .with_system(remove_dead_sheep)
-                    .with_system(remove_dead_war_machines)
-                    .with_system(sheep::wander)
-                    .with_system(sheep::wobble_sheep)
-                    .with_system(sheep::update_sheep_ordering)
-                    .with_system(update_battle_timer)
-                    .with_system(animate_war_machine)
-                    .into(),
-            )
-            .add_system_set(
-                ConditionSet::new()
-                    .run_in_state(GameState::Battle)
-                    .after("update")
-                    .with_system(bounds_check)
-                    .with_system(check_end_battle)
-                    .into(),
-            )
-            .add_enter_system_set(
-                GameState::Battle,
-                ConditionSet::new()
-                    .with_system(setup_level1.run_if_resource_equals::<Level>(Level(1)))
-                    .with_system(add_health_bars_to_sheep)
-                    .into(),
-            )
-            .add_exit_system_set(
-                GameState::Battle,
-                ConditionSet::new()
-                    .with_system(despawn_entities_with_component::<UnloadOnExit>)
-                    .into(),
-            );
+        app.add_system_set(
+            ConditionSet::new()
+                .run_in_state(GameState::Battle)
+                .label("update")
+                .with_system(war_machine_move_and_attack)
+                .with_system(sheep_attack)
+                .with_system(update_health_bars)
+                .with_system(remove_dead_sheep)
+                .with_system(remove_dead_war_machines)
+                .with_system(sheep::wander)
+                .with_system(sheep::wobble_sheep)
+                .with_system(sheep::update_sheep_ordering)
+                .with_system(update_battle_timer)
+                .into(),
+        )
+        .add_system_set(
+            ConditionSet::new()
+                .run_in_state(GameState::Battle)
+                .after("update")
+                .with_system(bounds_check)
+                .with_system(check_end_battle)
+                .into(),
+        )
+        .add_enter_system_set(
+            GameState::Battle,
+            ConditionSet::new()
+                .with_system(setup_level1.run_if_resource_equals::<Level>(Level(1)))
+                .with_system(add_health_bars_to_sheep)
+                .into(),
+        )
+        .add_exit_system_set(
+            GameState::Battle,
+            ConditionSet::new()
+                .with_system(despawn_entities_with_component::<UnloadOnExit>)
+                .into(),
+        );
     }
 }
 
@@ -277,7 +276,7 @@ fn check_end_battle(
 fn setup_level1(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    robot_texture: Res<war_machines::RobotSprites>,
+    robot_animations: Res<war_machines::RobotAnimations>,
 ) {
     // Spawn red battlefield to distinguish from the pen
     // TODO: should be replaced with a proper asset
@@ -313,7 +312,7 @@ fn setup_level1(
         10.0,
     ));
 
-    let war_machine = new_war_machine(&mut commands, &robot_texture, transform);
+    let war_machine = new_war_machine(&mut commands, &robot_animations, transform);
     commands
         .entity(war_machine)
         .insert(Speed(4.0))
