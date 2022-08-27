@@ -23,8 +23,10 @@ impl Attacking {
     pub const ANIMATION: &'static str = "attacking";
 }
 
-#[derive(Component)]
-pub struct Dying;
+#[derive(Component, Default)]
+pub struct Dying {
+    pub has_started: bool,
+}
 
 impl Dying {
     pub const ANIMATION: &'static str = "dying";

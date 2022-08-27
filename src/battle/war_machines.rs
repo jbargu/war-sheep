@@ -35,6 +35,7 @@ impl Plugin for WarMachinePlugin {
                     .with_system(idling)
                     .with_system(walking)
                     .with_system(attacking)
+                    .with_system(dying)
                     .into(),
             );
     }
@@ -160,7 +161,7 @@ pub fn load_war_machine_graphics(
         Sheet {
             atlas_handle: texture_atlases.add(texture_atlas),
             length: len,
-            repeating: true,
+            repeating: false,
         },
     );
     commands.insert_resource(RobotAnimations(animations_map));
@@ -355,6 +356,27 @@ fn attacking(
         if animation.has_finished() {
             commands.entity(wm_entity).remove::<Attacking>();
             commands.entity(wm_entity).insert(Idling);
+        }
+    }
+}
+
+fn dying(
+    mut commands: Commands,
+    mut war_machines_q: Query<
+        (Entity, &mut Animation, &mut Dying),
+        (With<Dying>, With<WarMachine>),
+    >,
+) {
+    for (entity, mut animation, mut dying) in war_machines_q.iter_mut() {
+        if !dying.has_started {
+            dying.has_started = true;
+
+            animation.play(Dying::ANIMATION, false);
+        }
+
+        // Remove war machine if animation expired
+        if animation.has_finished() {
+            commands.entity(entity).despawn_recursive();
         }
     }
 }

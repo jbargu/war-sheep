@@ -44,7 +44,6 @@ impl Plugin for BattlePlugin {
                 .with_system(sheep_attack)
                 .with_system(update_health_bars)
                 .with_system(remove_dead_sheep)
-                .with_system(remove_dead_war_machines)
                 .with_system(sheep::wander)
                 .with_system(sheep::wobble_sheep)
                 .with_system(sheep::update_sheep_ordering)
@@ -56,6 +55,7 @@ impl Plugin for BattlePlugin {
                 .run_in_state(GameState::Battle)
                 .after("update")
                 .with_system(bounds_check)
+                .with_system(apply_dying_to_dead_war_machines)
                 .with_system(check_end_battle)
                 .into(),
         )
@@ -137,13 +137,21 @@ fn remove_dead_sheep(
     }
 }
 
-fn remove_dead_war_machines(
+fn apply_dying_to_dead_war_machines(
     mut commands: Commands,
-    war_machines_q: Query<(Entity, &mut Health), (With<WarMachine>, Changed<Health>)>,
+    war_machines_q: Query<
+        (Entity, &mut Health),
+        (With<WarMachine>, Changed<Health>, Without<states::Dying>),
+    >,
 ) {
     for (war_machine, health) in war_machines_q.iter() {
         if health.current <= 0.0 {
-            commands.entity(war_machine).despawn_recursive();
+            commands
+                .entity(war_machine)
+                .remove::<states::Idling>()
+                .remove::<states::Walking>()
+                .remove::<states::Attacking>()
+                .insert(states::Dying::default());
         }
     }
 }
