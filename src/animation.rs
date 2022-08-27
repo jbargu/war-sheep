@@ -23,6 +23,7 @@ pub struct Animation {
     pub current_animation: Option<String>,
     current_frame: usize,
     pub timer: Timer,
+    pub flip_x: bool,
 }
 
 #[derive(Clone)]
@@ -39,12 +40,14 @@ impl Animation {
             current_animation: None,
             current_frame: 0,
             timer: Timer::from_seconds(duration, false),
+            flip_x: false,
         }
     }
 
     pub fn play(&mut self, name: &str, repeating: bool) {
         self.current_animation = Some(name.to_owned());
         self.current_frame = 0;
+        self.flip_x = false;
         self.timer.reset();
         self.timer.unpause();
         self.timer.set_repeating(repeating);
@@ -70,8 +73,15 @@ impl Animation {
 }
 
 /// Cycles all animations
-pub fn animate(time: Res<Time>, mut query: Query<(&mut Animation, &mut TextureAtlasSprite)>) {
-    for (mut animation, mut sprite) in &mut query {
+pub fn animate(
+    time: Res<Time>,
+    mut query: Query<(
+        &mut Animation,
+        &mut TextureAtlasSprite,
+        &mut Handle<TextureAtlas>,
+    )>,
+) {
+    for (mut animation, mut sprite, mut sprite_handle) in &mut query {
         animation.timer.tick(time.delta());
 
         if animation.timer.just_finished() {
@@ -86,8 +96,10 @@ pub fn animate(time: Res<Time>, mut query: Query<(&mut Animation, &mut TextureAt
             }
         }
 
-        if let Some(_) = animation.current_animation {
+        if let Some(curr) = &animation.current_animation {
+            *sprite_handle = animation.animations.get(curr).unwrap().atlas_handle.clone();
             sprite.index = animation.current_frame;
+            sprite.flip_x = animation.flip_x;
         }
     }
 }

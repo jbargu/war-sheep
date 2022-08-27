@@ -41,7 +41,6 @@ impl Plugin for BattlePlugin {
             ConditionSet::new()
                 .run_in_state(GameState::Battle)
                 .label("update")
-                .with_system(war_machine_move_and_attack)
                 .with_system(sheep_attack)
                 .with_system(update_health_bars)
                 .with_system(remove_dead_sheep)
@@ -78,74 +77,6 @@ impl Plugin for BattlePlugin {
 
 fn add_health_bars_to_sheep(mut commands: Commands, sheep_q: Query<Entity, With<sheep::Sheep>>) {
     sheep_q.for_each(|sheep| create_sheep_hp_bar(sheep, &mut commands));
-}
-
-fn war_machine_move_and_attack(
-    mut sheep_q: Query<(&mut Health, &mut Transform), (With<sheep::Sheep>, Without<WarMachine>)>,
-    mut war_machines_q: Query<
-        (
-            &Speed,
-            &mut Transform,
-            &Attack,
-            &BehaviourType,
-            &mut TextureAtlasSprite,
-        ),
-        (With<WarMachine>, Without<sheep::Sheep>),
-    >,
-    time: Res<Time>,
-) {
-    for (speed, mut wm_transform, attack, behaviour_type, mut sprite) in war_machines_q.iter_mut() {
-        // Calculate the distance between the sheep and the current war machine
-        let mut sheep = sheep_q
-            .iter_mut()
-            .filter(|(_, sheep_transform)| {
-                wm_transform
-                    .translation
-                    .truncate()
-                    .distance(sheep_transform.translation.truncate())
-                    <= attack.spotting_range
-            })
-            .collect::<Vec<_>>();
-
-        sheep.sort_by(|(_, transform1), (_, transform2)| {
-            wm_transform
-                .translation
-                .truncate()
-                .distance(transform1.translation.truncate())
-                .partial_cmp(
-                    &wm_transform
-                        .translation
-                        .truncate()
-                        .distance(transform2.translation.truncate()),
-                )
-                .unwrap()
-        });
-
-        // Find the closest sheep
-        if let Some((ref mut sheep_health, sheep_transform)) = sheep.get_mut(0) {
-            let difference =
-                sheep_transform.translation.truncate() - wm_transform.translation.truncate();
-
-            // If the sheep is close enough, attack it
-            if difference.length() <= attack.attack_range {
-                sheep_health.current -= attack.attack_damage;
-            }
-
-            // Move towards the sheep depending on the `behaviour_type`
-            match behaviour_type {
-                BehaviourType::ChasingClosest => {
-                    let direction = difference.normalize_or_zero();
-
-                    if difference.length() >= attack.attack_range * 0.5 {
-                        sprite.flip_x = direction.x <= 0.0;
-
-                        wm_transform.translation +=
-                            direction.extend(0.0) * speed.0 * time.delta_seconds();
-                    }
-                }
-            }
-        }
-    }
 }
 
 fn sheep_attack(
