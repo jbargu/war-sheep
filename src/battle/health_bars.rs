@@ -60,7 +60,7 @@ pub fn update_health_bars(
 ) {
     stats.for_each_mut(|(hp, bars)| {
         if let Ok(mut hp_bar) = stat_bars.get_mut(bars.hp) {
-            hp_bar.0 = hp.current as f32 / hp.max as f32;
+            hp_bar.0 = (hp.current as f32 / hp.max as f32).clamp(0.0, 1.0);
         }
     });
 }
