@@ -1,3 +1,4 @@
+use crate::audio::AnimationAudioPlayback;
 use crate::utils::Speed;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
@@ -222,7 +223,15 @@ fn walking(
     {
         // Start animation if we have not yet
         if animation.current_animation.as_deref() != Some(Walking::ANIMATION) {
-            animation.play(Walking::ANIMATION, true)
+            animation.play(Walking::ANIMATION, true);
+
+            // Add spotting sound on 2nd frame to not be to obnoxious
+            commands
+                .entity(wm_entity)
+                .insert(AnimationAudioPlayback::new(
+                    Walking::ANIMATION.to_owned(),
+                    HashMap::from([(2, String::from("audio/robot_engaged.mp3"))]),
+                ));
         }
 
         // Check whether any sheep are within spotting_range
@@ -308,6 +317,14 @@ fn attacking(
             attacking.has_started = true;
 
             animation.play(Attacking::ANIMATION, false);
+
+            // Add eating sound
+            commands
+                .entity(wm_entity)
+                .insert(AnimationAudioPlayback::new(
+                    Attacking::ANIMATION.to_owned(),
+                    HashMap::from([(1, String::from("audio/robot_eat.mp3"))]),
+                ));
 
             // Check whether any sheep are within attack range
             let mut sheep = sheep_q
