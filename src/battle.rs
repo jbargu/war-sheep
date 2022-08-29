@@ -31,7 +31,7 @@ pub struct Level(pub usize);
 pub const BATTLEFIELD_BOUNDS_X: Vec2 = Vec2::new(-6.2, 6.2);
 pub const BATTLEFIELD_BOUNDS_Y: Vec2 = Vec2::new(-6.4, 7.0);
 
-pub const DEFAULT_ROUND_TIME: f32 = 20.0;
+pub const DEFAULT_ROUND_TIME: f32 = 15.0;
 
 pub struct BattlePlugin;
 
