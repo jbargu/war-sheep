@@ -78,11 +78,22 @@ fn setup_result_text(
     ascii_sheet: Res<AsciiSheet>,
     battle_result: Res<BattleResult>,
 ) {
+    let color: Color;
+    if battle_result.battle_status == BattleStatus::Victory {
+        commands.insert_resource(LevelReward(battle_result.level_reward_sheep_gained));
+        color = Color::WHITE;
+    } else if battle_result.battle_status == BattleStatus::GameOver {
+        commands.insert_resource(NewGame);
+        color = Color::ORANGE_RED;
+    } else {
+        color = Color::WHITE;
+    }
+
     commands
         .spawn_bundle(SpriteBundle {
-            texture: asset_server.load("BattleReportBackground.png"),
+            texture: asset_server.load("SheepFarmBehind.png"),
             sprite: Sprite {
-                color: Color::ORANGE_RED,
+                color,
                 custom_size: Some(Vec2::new(550.0, 300.0) / 16.0),
                 ..default()
             },
@@ -103,12 +114,6 @@ fn setup_result_text(
         &battle_result.status_text(),
     );
     commands.entity(text).insert(UnloadOnExit);
-
-    if battle_result.battle_status == BattleStatus::Victory {
-        commands.insert_resource(LevelReward(battle_result.level_reward_sheep_gained));
-    } else if battle_result.battle_status == BattleStatus::GameOver {
-        commands.insert_resource(NewGame);
-    }
 
     commands.remove_resource::<BattleResult>();
 }
