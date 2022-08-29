@@ -17,7 +17,6 @@ version = "0.8"
 default-features = false
 # These are the remaining default features other than `bevy_audio` and `vorbis`
 features  = [
-	"dynamic",
 	"render",
 	"animation",
 	"bevy_asset",
@@ -28,6 +27,11 @@ features  = [
 	"hdr",
 	"filesystem_watcher",
 	"x11"
+]
+
+[features]
+dev = [
+		"bevy/dynamic",
 ]
 
 ## Uncomment if game becomes too slow in debug mode ## 
