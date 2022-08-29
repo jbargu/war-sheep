@@ -8,9 +8,10 @@ A game of sheep and war machines made for [Bevy Jam #2](https://itch.io/jam/bevy
 It works best on Chrome. You have to enable sound for the site.
 
 Drag a sheep on top of the other sheep to combine them into a stronger sheep. Every sheep starts as a level 1 basic sheep that can be combined into sheep with different traits:
-	- spear: long attack range
-	- tank: more health points, stronger attack
-	- medic: heals other sheep in the area of effect
+
+- spear: long attack range
+- tank: more health points, stronger attack
+- medic: heals other sheep in the area of effect
 
 
 The traits are currently not working, but the sheep stats should increase. Every sheep has a basic attack.
