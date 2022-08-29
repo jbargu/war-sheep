@@ -6,16 +6,34 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = { version = "0.8", features = ["dynamic"] }
 bevy-inspector-egui = "0.12" 
 bevy_simple_stat_bars = {git = "https://github.com/ickshonpe/bevy_simple_stat_bars", branch="main"}
+bevy_kira_audio = { version = "0.11.0", features = ["mp3"] }
 iyes_loopless = "0.7"
 rand = "0.8"
 
+[dependencies.bevy]
+version = "0.8"
+default-features = false
+# These are the remaining default features other than `bevy_audio` and `vorbis`
+features  = [
+	"dynamic",
+	"render",
+	"animation",
+	"bevy_asset",
+	"bevy_scene",
+	"bevy_winit",
+	"bevy_gilrs",
+	"png",
+	"hdr",
+	"filesystem_watcher",
+	"x11"
+]
+
 ## Uncomment if game becomes too slow in debug mode ## 
 #
-# [profile.dev]
-# opt-level = 1
+[profile.dev]
+opt-level = 1
 # 
-# [profile.dev.package."*"]
-# opt-level = 3
+[profile.dev.package."*"]
+opt-level = 3
