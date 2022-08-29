@@ -31,6 +31,7 @@ impl Plugin for SheepPlugin {
                 .run_in_state(GameState::Herding)
                 .with_system(sheep_select)
                 .with_system(update_select_box)
+                .with_system(remove_selected_text)
                 .with_system(drop_sheep)
                 .with_system(wander)
                 .with_system(wobble_sheep)
@@ -129,7 +130,7 @@ impl Sheep {
     /// machine.
     pub fn attack_component(&self) -> Attack {
         Attack {
-            attack_damage: SHEEP_DEFAULT_ATTACK.attack_damage * self.sum_levels(),
+            attack_damage: SHEEP_DEFAULT_ATTACK.attack_damage * (self.sum_levels() + 1.0) / 2.0,
             attack_range: SHEEP_DEFAULT_ATTACK.attack_range
                 * ((self.sum_levels() / 2.0).log2() + 0.2),
             spotting_range: SHEEP_DEFAULT_ATTACK.spotting_range
@@ -144,10 +145,7 @@ impl Sheep {
 
     pub fn health_component(&self) -> Health {
         let hp = SHEEP_DEFAULT_HEALTH * (self.sum_levels());
-        return Health {
-            current: hp,
-            max: hp,
-        };
+        Health::new(hp)
     }
 }
 
@@ -278,6 +276,7 @@ fn init_new_game(
         .push_children(&sheep);
 
     commands.remove_resource::<NewGame>();
+    commands.insert_resource(Level(4));
 }
 
 fn add_level_reward_sheep(
@@ -393,9 +392,6 @@ fn grab_sheep(
     }
 }
 
-#[derive(Component)]
-struct Selected;
-
 fn drop_sheep(
     mut commands: Commands,
     texture: Res<SheepSprites>,
@@ -435,15 +431,20 @@ fn drop_sheep(
 #[derive(Component)]
 struct Select;
 
+#[derive(Component)]
+struct SelectedText;
+
 // Would prefer to be called `select_sheep` but there was a previous system of that name (now
 // changed to `grab_sheep`) and I didn't want to give confusing merge conflicts
 /// Add the little select icon to the sheep when they're selected, this will also display their
 /// stats in the future
 fn sheep_select(
     mut commands: Commands,
-    q: Query<Entity, (With<Sheep>, Added<Drag>)>,
+    q: Query<(Entity, &Sheep), Added<Drag>>,
     currently_selected: Query<Entity, With<Select>>,
+    selected_text: Query<Entity, With<SelectedText>>,
     assets: Res<AssetServer>,
+    ascii_sheet: Res<AsciiSheet>,
 ) {
     let mut added_this_frame = Vec::new();
     if !q.is_empty() {
@@ -452,7 +453,7 @@ fn sheep_select(
         }
     }
 
-    for entity in q.iter() {
+    for (entity, sheep) in q.iter() {
         // NOTE: This needs some work. Namely, it shouldn't rotate with the sheep - but the only
         // way I can think of to achieve that would be to have the sheep's body sprite be a child of
         // the sheep object, which is some refactoring I don't want to do right now, but will have
@@ -472,11 +473,44 @@ fn sheep_select(
                 ..default()
             })
             .insert(Select)
+            .insert(UnloadOnExit)
             .insert(Name::from("SelectBox"))
             .id();
         commands.entity(entity).add_child(select_box);
 
+        // Remove old text
+        if !selected_text.is_empty() {
+            selected_text.for_each(|text| commands.entity(text).despawn_recursive());
+        }
+
+        // Add new text
+        let lvl_string = sheep.sum_levels();
+        let sheep_stats = write_text(
+            &mut commands,
+            &ascii_sheet,
+            Vec2::new(-1.0, 3.8).extend(50.0),
+            Color::WHITE,
+            format!("Sheep lvl: {lvl_string}").as_str(),
+        );
+        commands
+            .entity(sheep_stats)
+            .insert(SelectedText)
+            .insert(UnloadOnExit);
+
         added_this_frame.push(select_box.id());
+    }
+}
+
+/// Handles orphanes selected text when an entity is deselected
+fn remove_selected_text(
+    mut commands: Commands,
+    selected_text_q: Query<Entity, With<SelectedText>>,
+    selected_entity_q: Query<Entity, With<Select>>,
+) {
+    if selected_entity_q.is_empty() && !selected_text_q.is_empty() {
+        commands
+            .entity(selected_text_q.single())
+            .despawn_recursive();
     }
 }
 
