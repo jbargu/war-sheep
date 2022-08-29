@@ -74,8 +74,8 @@ fn main() {
             width: WINDOW_WIDTH,
             height: WINDOW_HEIGHT,
             title: "War Sheep".to_string(),
-            resizable: false, // I am using tiling WM so this is just easier for time being, can
-            ..default()       // adjust later
+            //resizable: false, // I am using tiling WM so this is just easier for time being, can
+            ..default() // adjust later
         })
         .insert_resource(battle::Level(1))
         .insert_resource(NewGame)

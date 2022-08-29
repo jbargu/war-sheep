@@ -132,7 +132,7 @@ impl Sheep {
         Attack {
             attack_damage: SHEEP_DEFAULT_ATTACK.attack_damage * (self.sum_levels() + 1.0) / 2.0,
             attack_range: SHEEP_DEFAULT_ATTACK.attack_range
-                * ((self.sum_levels() / 2.0).log2() + 0.2),
+                * ((self.sum_levels() / 2.0).log2() + 0.2).clamp(1.0, 2.0),
             spotting_range: SHEEP_DEFAULT_ATTACK.spotting_range
                 * ((self.sum_levels()).log2() + 1.0),
         }
@@ -276,7 +276,7 @@ fn init_new_game(
         .push_children(&sheep);
 
     commands.remove_resource::<NewGame>();
-    commands.insert_resource(Level(4));
+    commands.insert_resource(Level(1));
 }
 
 fn add_level_reward_sheep(
@@ -295,7 +295,7 @@ fn setup_ui(mut commands: Commands, ascii_sheet: Res<AsciiSheet>, level: Res<Lev
     let start_battle_text = write_text(
         &mut commands,
         &ascii_sheet,
-        Vec2::new(-2.6, -3.8).extend(50.0),
+        Vec2::new(-2.6, -4.3).extend(50.0),
         Color::WHITE,
         "Press SPACE to fight!",
     );
@@ -304,7 +304,7 @@ fn setup_ui(mut commands: Commands, ascii_sheet: Res<AsciiSheet>, level: Res<Lev
     let level_text = write_text(
         &mut commands,
         &ascii_sheet,
-        Vec2::new(3.8, 3.8).extend(50.0),
+        Vec2::new(6.5, 4.3).extend(50.0),
         Color::WHITE,
         format!("Lvl: {lvl_string}").as_str(),
     );
@@ -488,7 +488,7 @@ fn sheep_select(
         let sheep_stats = write_text(
             &mut commands,
             &ascii_sheet,
-            Vec2::new(-1.0, 3.8).extend(50.0),
+            Vec2::new(-1.0, 4.3).extend(50.0),
             Color::WHITE,
             format!("Sheep lvl: {lvl_string}").as_str(),
         );

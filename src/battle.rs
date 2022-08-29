@@ -167,7 +167,7 @@ fn setup_ui(mut commands: Commands, ascii_sheet: Res<AsciiSheet>, level: Res<Lev
     let level_text = write_text(
         &mut commands,
         &ascii_sheet,
-        Vec2::new(3.8, 3.8).extend(50.0),
+        Vec2::new(6.5, 4.3).extend(50.0),
         Color::WHITE,
         format!("Lvl: {lvl_string}").as_str(),
     );
@@ -192,7 +192,7 @@ fn update_battle_timer(
     let battle_timer = write_text(
         &mut commands,
         &ascii_sheet,
-        Vec2::new(-0.5, -3.8).extend(50.0),
+        Vec2::new(-0.5, -4.3).extend(50.0),
         Color::WHITE,
         format!("{elapsed:.2}").as_str(),
     );
@@ -240,11 +240,7 @@ fn random_position_within_battlefield() -> Transform {
     .with_scale(Vec3::splat(0.05))
 }
 
-fn setup_level1(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    robot_animations: Res<war_machines::RobotAnimations>,
-) {
+fn setup_battlefield(commands: &mut Commands, asset_server: &Res<AssetServer>) {
     // Spawn red battlefield to distinguish from the pen
     // TODO: should be replaced with a proper asset
     commands
@@ -262,7 +258,24 @@ fn setup_level1(
             ..default()
         })
         .insert(UnloadOnExit)
-        .insert(Name::from("Battlefield"));
+        .insert(Name::from("BattlefieldBehind"));
+
+    commands
+        .spawn_bundle(SpriteBundle {
+            texture: asset_server.load("SheepFarmInfront.png"),
+            sprite: Sprite {
+                color: Color::ORANGE_RED,
+                custom_size: Some(Vec2::new(550.0, 300.0) / 16.0),
+                ..default()
+            },
+            transform: Transform {
+                translation: Vec2::splat(0.0).extend(20.0),
+                ..default()
+            },
+            ..default()
+        })
+        .insert(UnloadOnExit)
+        .insert(Name::from("BattlefieldFront"));
 
     // Add round timer
     commands.insert_resource(BattleTimer(Timer::from_seconds(DEFAULT_ROUND_TIME, false)));
@@ -270,6 +283,14 @@ fn setup_level1(
         level_reward_sheep_gained: 10,
         ..default()
     });
+}
+
+fn setup_level1(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    robot_animations: Res<war_machines::RobotAnimations>,
+) {
+    setup_battlefield(&mut commands, &asset_server);
 
     // Spawn a single war machine
     let war_machine = new_war_machine(
@@ -294,31 +315,7 @@ fn setup_level2(
     asset_server: Res<AssetServer>,
     robot_animations: Res<war_machines::RobotAnimations>,
 ) {
-    // Spawn red battlefield to distinguish from the pen
-    // TODO: should be replaced with a proper asset
-    commands
-        .spawn_bundle(SpriteBundle {
-            texture: asset_server.load("SheepFarmBehind.png"),
-            sprite: Sprite {
-                color: Color::ORANGE_RED,
-                custom_size: Some(Vec2::new(550.0, 300.0) / 16.0),
-                ..default()
-            },
-            transform: Transform {
-                translation: Vec3::splat(0.0),
-                ..default()
-            },
-            ..default()
-        })
-        .insert(UnloadOnExit)
-        .insert(Name::from("Battlefield"));
-
-    // Add round timer
-    commands.insert_resource(BattleTimer(Timer::from_seconds(DEFAULT_ROUND_TIME, false)));
-    commands.insert_resource(BattleResult {
-        level_reward_sheep_gained: 10,
-        ..default()
-    });
+    setup_battlefield(&mut commands, &asset_server);
 
     // Spawn 2 war machines
     for _ in 0..2 {
@@ -345,31 +342,7 @@ fn setup_level3(
     asset_server: Res<AssetServer>,
     robot_animations: Res<war_machines::RobotAnimations>,
 ) {
-    // Spawn red battlefield to distinguish from the pen
-    // TODO: should be replaced with a proper asset
-    commands
-        .spawn_bundle(SpriteBundle {
-            texture: asset_server.load("SheepFarmBehind.png"),
-            sprite: Sprite {
-                color: Color::ORANGE_RED,
-                custom_size: Some(Vec2::new(550.0, 300.0) / 16.0),
-                ..default()
-            },
-            transform: Transform {
-                translation: Vec3::splat(0.0),
-                ..default()
-            },
-            ..default()
-        })
-        .insert(UnloadOnExit)
-        .insert(Name::from("Battlefield"));
-
-    // Add round timer
-    commands.insert_resource(BattleTimer(Timer::from_seconds(DEFAULT_ROUND_TIME, false)));
-    commands.insert_resource(BattleResult {
-        level_reward_sheep_gained: 10,
-        ..default()
-    });
+    setup_battlefield(&mut commands, &asset_server);
 
     // Spawn 5 small war machines
     for _ in 0..5 {
@@ -412,31 +385,7 @@ fn setup_level4(
     asset_server: Res<AssetServer>,
     robot_animations: Res<war_machines::RobotAnimations>,
 ) {
-    // Spawn red battlefield to distinguish from the pen
-    // TODO: should be replaced with a proper asset
-    commands
-        .spawn_bundle(SpriteBundle {
-            texture: asset_server.load("SheepFarmBehind.png"),
-            sprite: Sprite {
-                color: Color::ORANGE_RED,
-                custom_size: Some(Vec2::new(550.0, 300.0) / 16.0),
-                ..default()
-            },
-            transform: Transform {
-                translation: Vec3::splat(0.0),
-                ..default()
-            },
-            ..default()
-        })
-        .insert(UnloadOnExit)
-        .insert(Name::from("Battlefield"));
-
-    // Add round timer
-    commands.insert_resource(BattleTimer(Timer::from_seconds(DEFAULT_ROUND_TIME, false)));
-    commands.insert_resource(BattleResult {
-        level_reward_sheep_gained: 10,
-        ..default()
-    });
+    setup_battlefield(&mut commands, &asset_server);
 
     // Spawn 3 big war machines
     for _ in 0..3 {
