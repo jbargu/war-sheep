@@ -1,5 +1,5 @@
 use bevy::{prelude::*, utils::HashMap};
-use bevy_kira_audio::{AudioApp, AudioChannel, AudioSource};
+use bevy_kira_audio::{AudioApp, AudioChannel};
 use iyes_loopless::prelude::*;
 
 use crate::animation::Animation;

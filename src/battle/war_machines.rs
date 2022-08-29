@@ -226,12 +226,12 @@ fn walking(
             animation.play(Walking::ANIMATION, true);
 
             // Add spotting sound on 2nd frame to not be to obnoxious
-            commands
-                .entity(wm_entity)
-                .insert(AnimationAudioPlayback::new(
-                    Walking::ANIMATION.to_owned(),
-                    HashMap::from([(2, String::from("audio/robot_engaged.mp3"))]),
-                ));
+            //commands
+            //.entity(wm_entity)
+            //.insert(AnimationAudioPlayback::new(
+            //Walking::ANIMATION.to_owned(),
+            //HashMap::from([(2, String::from("audio/robot_engaged.mp3"))]),
+            //));
         }
 
         // Check whether any sheep are within spotting_range

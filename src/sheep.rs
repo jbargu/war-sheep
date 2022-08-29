@@ -243,7 +243,14 @@ fn spawn_sheep(
 #[derive(Component)]
 pub struct SheepParent;
 
-fn init_new_game(mut commands: Commands, texture: Res<SheepSprites>) {
+fn init_new_game(
+    mut commands: Commands,
+    texture: Res<SheepSprites>,
+    sheep_parent_q: Query<Entity, With<SheepParent>>,
+) {
+    // Remove old sheep parents
+    sheep_parent_q.for_each(|sheep_parent| commands.entity(sheep_parent).despawn_recursive());
+
     let sheep = spawn_n_sheep(&mut commands, texture, COUNT_INIT_SHEEP);
 
     commands
