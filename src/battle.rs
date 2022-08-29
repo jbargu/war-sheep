@@ -33,6 +33,8 @@ pub const BATTLEFIELD_BOUNDS_Y: Vec2 = Vec2::new(-6.4, 7.0);
 
 pub const DEFAULT_ROUND_TIME: f32 = 15.0;
 
+pub const MAX_LEVEL: usize = 1;
+
 pub struct BattlePlugin;
 
 impl Plugin for BattlePlugin {
@@ -203,7 +205,7 @@ fn check_end_battle(
     battle_timer: Res<BattleTimer>,
     sheep_q: Query<Entity, (With<sheep::Sheep>, Without<WarMachine>)>,
     war_machines_q: Query<Entity, (Without<sheep::Sheep>, With<WarMachine>)>,
-    mut _level: ResMut<Level>,
+    mut level: ResMut<Level>,
 ) {
     if battle_timer.0.just_finished() || sheep_q.is_empty() || war_machines_q.is_empty() {
         // TODO: should show battle report, before going straight to Herding
@@ -219,11 +221,19 @@ fn check_end_battle(
         }
 
         // Increase level if all war machines are dead
-        // Currently commented, not all levels are defined
-        //if war_machines_q.is_empty() {
-        //level.0 += 1;
-        //}
+        if war_machines_q.is_empty() && level.0 < MAX_LEVEL {
+            level.0 += 1;
+        }
     }
+}
+
+fn random_position_within_battlefield() -> Transform {
+    let mut rng = thread_rng();
+    Transform::from_translation(Vec3::new(
+        rng.gen_range(BATTLEFIELD_BOUNDS_X.x..=BATTLEFIELD_BOUNDS_X.y),
+        rng.gen_range(BATTLEFIELD_BOUNDS_Y.x..=BATTLEFIELD_BOUNDS_Y.y),
+        10.0,
+    ))
 }
 
 fn setup_level1(
@@ -258,14 +268,11 @@ fn setup_level1(
     });
 
     // Spawn a single war machine
-    let mut rng = thread_rng();
-    let transform = Transform::from_translation(Vec3::new(
-        rng.gen_range(BATTLEFIELD_BOUNDS_X.x..=BATTLEFIELD_BOUNDS_X.y),
-        rng.gen_range(BATTLEFIELD_BOUNDS_Y.x..=BATTLEFIELD_BOUNDS_Y.y),
-        10.0,
-    ));
-
-    let war_machine = new_war_machine(&mut commands, &robot_animations, transform);
+    let war_machine = new_war_machine(
+        &mut commands,
+        &robot_animations,
+        random_position_within_battlefield(),
+    );
     commands
         .entity(war_machine)
         .insert(Speed(4.0))

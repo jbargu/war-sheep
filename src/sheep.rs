@@ -102,37 +102,52 @@ impl std::ops::Add<Self> for SheepLevels {
 #[derive(Component, Default)]
 pub struct Sheep {
     // In future we can put all the sheep traits here
-    col: f32,
+    color: f32,
     levels: SheepLevels,
 }
 
 impl Sheep {
-    fn from_col(col: f32) -> Self {
-        Self { col, ..default() }
+    fn from_col(color: f32) -> Self {
+        Self { color, ..default() }
     }
 
     fn combine(&self, other: &Self) -> Self {
         let mut rng = thread_rng();
         Self {
-            col: 0.1f32.max((self.col + other.col) / 2.0 + rng.gen_range(-0.1..=0.1)),
+            color: 0.1f32.max((self.color + other.color) / 2.0 + rng.gen_range(-0.1..=0.1)),
             levels: self.levels + other.levels,
         }
     }
 
     /// TODO: Currently we sum all the levels times the SHEEP_DEFAULT_ATTACK to get the
     /// `attack_damage`. Should probably be modified based on the different trait + combine RNG.
-    pub fn attack_multiplier(&self) -> usize {
-        self.levels.base + self.levels.spear + self.levels.tank + self.levels.medic
+    pub fn sum_levels(&self) -> f32 {
+        (self.levels.base + self.levels.spear + self.levels.tank + self.levels.medic) as f32
     }
 
     /// If this component is attached to the `sheep` entity, it will attack the nearest war
     /// machine.
     pub fn attack_component(&self) -> Attack {
         Attack {
-            attack_damage: SHEEP_DEFAULT_ATTACK.attack_damage * self.attack_multiplier() as f32,
-            attack_range: SHEEP_DEFAULT_ATTACK.attack_range,
-            spotting_range: SHEEP_DEFAULT_ATTACK.spotting_range,
+            attack_damage: SHEEP_DEFAULT_ATTACK.attack_damage * self.sum_levels(),
+            attack_range: SHEEP_DEFAULT_ATTACK.attack_range
+                * ((self.sum_levels() / 2.0).log2() + 0.2),
+            spotting_range: SHEEP_DEFAULT_ATTACK.spotting_range
+                * ((self.sum_levels()).log2() + 1.0),
         }
+    }
+
+    /// Diminishing speed
+    pub fn speed_component(&self) -> Speed {
+        Speed(SHEEP_WANDER_SPEED * (self.sum_levels()).log2() + 1.0)
+    }
+
+    pub fn health_component(&self) -> Health {
+        let hp = SHEEP_DEFAULT_HEALTH * (self.sum_levels());
+        return Health {
+            current: hp,
+            max: hp,
+        };
     }
 }
 
@@ -188,6 +203,9 @@ fn spawn_sheep(
     transform.rotation = Quat::IDENTITY;
 
     let attack = sheep.attack_component();
+    let speed = sheep.speed_component();
+    let health = sheep.health_component();
+
     let sheep = commands
         .spawn_bundle(SpriteSheetBundle {
             transform,
@@ -195,7 +213,7 @@ fn spawn_sheep(
             sprite: TextureAtlasSprite {
                 index: 1,
                 custom_size: Some(Vec2::new(20.0, 19.0) / 16.0),
-                color: Color::WHITE * sheep.col,
+                color: Color::WHITE * sheep.color,
                 ..default()
             },
             ..default()
@@ -214,11 +232,8 @@ fn spawn_sheep(
             x: (PEN_BOUNDS_X.x, PEN_BOUNDS_X.y),
             y: (PEN_BOUNDS_Y.x, PEN_BOUNDS_Y.y),
         })
-        .insert(Speed(SHEEP_WANDER_SPEED))
-        .insert(Health {
-            current: SHEEP_DEFAULT_HEALTH,
-            max: SHEEP_DEFAULT_HEALTH,
-        })
+        .insert(speed)
+        .insert(health)
         .insert(attack)
         .id();
 

@@ -1,7 +1,7 @@
 
 # War sheep
 
-A game of sheep and war machines made for [Bevy Jam #2](https://itch.io/jam/bevy-jam-2). It prioritizes learning of the framework over actual playability of the game.
+A game of sheep and war machines made for [Bevy Jam #2](https://itch.io/jam/bevy-jam-2). It prioritizes learning of the framework over actual playability of the game. A web version is available [here](https://jbargu.github.io/war-sheep/).
 
 ## Playing
 
