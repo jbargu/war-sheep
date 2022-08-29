@@ -64,6 +64,7 @@ impl Plugin for BattlePlugin {
             ConditionSet::new()
                 .with_system(setup_level1.run_if_resource_equals::<Level>(Level(1)))
                 .with_system(add_health_bars_to_sheep)
+                .with_system(setup_ui)
                 .into(),
         )
         .add_exit_system_set(
@@ -156,7 +157,20 @@ fn apply_dying_to_dead_war_machines(
     }
 }
 
-/// Increases battler timer and renders it to screen
+fn setup_ui(mut commands: Commands, ascii_sheet: Res<AsciiSheet>, level: Res<Level>) {
+    let lvl_string = level.0;
+    let level_text = write_text(
+        &mut commands,
+        &ascii_sheet,
+        Vec2::new(3.8, 3.8).extend(50.0),
+        Color::WHITE,
+        format!("Lvl: {lvl_string}").as_str(),
+    );
+
+    commands.entity(level_text).insert(UnloadOnExit);
+}
+
+/// Increases battle timer and renders it to screen
 fn update_battle_timer(
     mut commands: Commands,
     time: Res<Time>,

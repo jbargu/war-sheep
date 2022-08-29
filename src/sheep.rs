@@ -1,10 +1,12 @@
+use crate::battle::Level;
 use crate::battle_report::LevelReward;
 use bevy::prelude::*;
 use iyes_loopless::prelude::*;
 
 use rand::{thread_rng, Rng};
 
-use crate::utils::{bounds_check, Attack, Bounds, Health, Speed};
+use crate::ui::{write_text, AsciiSheet};
+use crate::utils::{bounds_check, Attack, Bounds, Health, Speed, UnloadOnExit};
 use crate::{drag::Drag, GameState, NewGame, ScreenToWorld};
 
 pub struct SheepPlugin;
@@ -16,6 +18,7 @@ impl Plugin for SheepPlugin {
             ConditionSet::new()
                 .with_system(init_new_game.run_if_resource_exists::<NewGame>())
                 .with_system(add_level_reward_sheep.run_if_resource_exists::<LevelReward>())
+                .with_system(setup_ui)
                 .into(),
         )
         .add_startup_system_to_stage(StartupStage::PreStartup, load_graphics)
@@ -272,6 +275,28 @@ fn add_level_reward_sheep(
 
     commands.entity(sheep_parent.single()).push_children(&sheep);
     commands.remove_resource::<LevelReward>();
+}
+
+fn setup_ui(mut commands: Commands, ascii_sheet: Res<AsciiSheet>, level: Res<Level>) {
+    let start_battle_text = write_text(
+        &mut commands,
+        &ascii_sheet,
+        Vec2::new(-2.6, -3.8).extend(50.0),
+        Color::WHITE,
+        "Press SPACE to fight!",
+    );
+
+    let lvl_string = level.0;
+    let level_text = write_text(
+        &mut commands,
+        &ascii_sheet,
+        Vec2::new(3.8, 3.8).extend(50.0),
+        Color::WHITE,
+        format!("Lvl: {lvl_string}").as_str(),
+    );
+
+    commands.entity(start_battle_text).insert(UnloadOnExit);
+    commands.entity(level_text).insert(UnloadOnExit);
 }
 
 fn spawn_n_sheep(
@@ -557,7 +582,7 @@ fn keyboard_input(
     keys: ResMut<Input<KeyCode>>,
     sheep_q: Query<Entity, With<SheepParent>>,
 ) {
-    if keys.just_released(KeyCode::Key1) {
+    if keys.just_released(KeyCode::Space) {
         commands.insert_resource(NextState(GameState::Battle));
     }
 
