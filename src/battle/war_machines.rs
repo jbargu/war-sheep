@@ -47,9 +47,6 @@ pub fn new_war_machine(
     animations_map: &Res<RobotAnimations>,
     transform: Transform,
 ) -> Entity {
-    let mut transform = transform;
-    transform.rotation = Quat::IDENTITY;
-    transform.scale = Vec3::splat(0.05);
     let id = commands
         .spawn_bundle(SpriteSheetBundle {
             transform,

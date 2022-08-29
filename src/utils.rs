@@ -9,6 +9,15 @@ pub struct Health {
     pub max: f32,
 }
 
+impl Health {
+    pub fn new(hp: f32) -> Self {
+        Self {
+            current: hp,
+            max: hp,
+        }
+    }
+}
+
 #[derive(Component)]
 pub struct Attack {
     pub attack_damage: f32,
