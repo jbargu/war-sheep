@@ -51,3 +51,12 @@ zip -r war-sheep.zip out/
 ## Attribution
 - Used [Ascii.png](./assets/Ascii.png) from [Dwarf Fortress Wiki](https://dwarffortresswiki.org/Tileset_repository#Herrbdog_7x7_tileset.gif), licensed under [GFDL & MIT](https://dwarffortresswiki.org/index.php/Dwarf_Fortress_Wiki:Copyrights)
 - robot sprite for walking was modified based on the original work of [16x16+ Robot Tileset by Robert](https://0x72.itch.io/16x16-robot-tileset)
+
+## License
+
+Licensed under either of
+
+- Apache License, Version 2.0, (http://www.apache.org/licenses/LICENSE-2.0)
+- MIT license (http://opensource.org/licenses/MIT)
+
+at your option.
